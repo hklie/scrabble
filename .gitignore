@@ -1,0 +1,16 @@
+# Data
+Data/
+
+# IDE
+.idea/
+
+# PyCharm boilerplate
+pythonProject/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+.DS_Store
