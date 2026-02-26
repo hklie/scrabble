@@ -11,7 +11,7 @@ CLEAN_NO_VERBS_FILE = os.path.join(BASE_PATH, "No_verbos_filtrados.txt")
 RANKED_SCRABBLE_WORDS = os.path.join(BASE_PATH, "Ranked_Scrabble_Suggestions.txt")
 OUTPUT_STUDY_LIST = os.path.join(BASE_PATH, "Optimized_Study_List.txt")
 
-DIGRAPHS = {'1': 'ch', '2': 'll', '3': 'rr'}
+DIGRAPHS = {'1': 'ch', '2': 'll', '3': 'rr', '4': 'ñ'}
 DIGRAPH_MAP= {v: k for k, v in DIGRAPHS.items()}
 
 SCRABBLE_TILES = {
@@ -55,13 +55,14 @@ TOTAL_BLANKS = 2
 TOTAL_TILES = sum(SCRABBLE_TILES.values()) + TOTAL_BLANKS  # 100
 
 # All 28 playable tile types in internal representation (digraphs encoded as 1/2/3)
-ALL_TILES = list('abcdefghijlmnñopqrstuvxyz') + ['1', '2', '3']
+ALL_TILES = list('abcdefghijlmnopqrstuvxyz') + ['1', '2', '3', '4']
 
 # Internal point values (digraphs use their encoded keys)
 INTERNAL_POINTS = {k: v for k, v in SCRABBLE_POINTS.items()}
 INTERNAL_POINTS['1'] = SCRABBLE_POINTS['ch']
 INTERNAL_POINTS['2'] = SCRABBLE_POINTS['ll']
 INTERNAL_POINTS['3'] = SCRABBLE_POINTS['rr']
+INTERNAL_POINTS['4'] = SCRABBLE_POINTS['ñ']
 
 # Standard 15x15 premium square map (same for Spanish Scrabble)
 PREMIUM_SQUARES = {}

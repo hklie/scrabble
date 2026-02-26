@@ -10,6 +10,9 @@ def tokenize_word(word):
         if i + 1 < len(word) and word[i:i+2] in DIGRAPH_MAP:
             result.append(DIGRAPH_MAP[word[i:i+2]])
             i += 2
+        elif word[i] in DIGRAPH_MAP:
+            result.append(DIGRAPH_MAP[word[i]])
+            i += 1
         else:
             result.append(word[i])
             i += 1
