@@ -1,13 +1,14 @@
 # Spanish Scrabble Word Study Tool
 
-A Python toolkit for analyzing, filtering, ranking, and organizing a Spanish-language Scrabble lexicon into study materials. It handles Spanish digraphs (`ch`, `ll`, `rr`) via an internal encoding system and produces categorized word lists, probability rankings, CSV exports, and flashcard-style transformation chains.
+A Python toolkit for analyzing, filtering, ranking, and organizing a Spanish-language Scrabble lexicon into study materials. It includes a board image analyzer that uses OCR to read board and rack photos, then finds the highest-scoring plays using the Appel-Jacobson algorithm. It handles Spanish digraphs (`ch`, `ll`, `rr`) via an internal encoding system and produces categorized word lists, probability rankings, CSV exports, and flashcard-style transformation chains.
 
 ## Project Structure
 
 ```
 scrabble/
 ├── Data/                          # Input lexicon files and all generated output
-│   ├── Lexicon.TXT                # Complete Spanish Scrabble lexicon
+│   ├── Lexicon.TXT                # Complete Spanish Scrabble lexicon (~639K words)
+│   ├── LexiconFISE2.TXT           # Official FISE2 lexicon
 │   ├── No_verbos.txt              # Raw non-verb word list (latin-1 encoded)
 │   ├── Verbos.txt                 # Raw verb list (latin-1 encoded)
 │   ├── Master Copy/
@@ -28,9 +29,14 @@ scrabble/
 │   ├── five_token_ending_*.txt    # [generated] 5-token words by ending
 │   └── six_token_ending_*.txt     # [generated] 6-token words by ending
 │
+├── boards/                        # Board and rack images for analyze_board.py
+│   ├── Board1.jpg ... Board5.jpg  # Board photos
+│   └── rack2.jpg ... rack5.jpg    # Rack photos
+│
 ├── scrabble/                      # Source code package
 │   ├── config.py                  # Central configuration (paths, constants, patterns)
 │   ├── preprocessing.py           # Digraph tokenization/detokenization
+│   ├── analyze_board.py           # Board image OCR + best move finder
 │   ├── clean_no_verbs.py          # Lexicon cleaning and deduplication
 │   ├── probability.py             # Probabilistic word ranking
 │   ├── study_list.py              # Tiered study list generation
@@ -56,14 +62,16 @@ scrabble/
 
 | Package | Used by | Purpose |
 |---------|---------|---------|
-| `numpy` | `nouns_csv.py` | Percentile calculations for word scoring |
+| `numpy` | `nouns_csv.py`, `analyze_board.py` | Percentile calculations; image array operations |
+| `opencv-python` | `analyze_board.py` | Image processing, thresholding, cell extraction |
+| `easyocr` | `analyze_board.py` | Optical character recognition (Spanish model) |
 | `regex` | `chains.py` | Advanced regex support (imported but lightly used) |
 
 ### Internal
 
 All modules depend on:
 
-- **`config.py`** -- file paths, Scrabble tile/point data, digraph mappings, pattern definitions, tier groupings.
+- **`config.py`** -- file paths, Scrabble tile/point data, digraph mappings, pattern definitions, tier groupings, premium square map, board analysis constants.
 - **`preprocessing.py`** -- `tokenize_word()` and `detokenize_word()` for digraph-aware text handling.
 
 `probability.py` additionally imports from `generator.py` (for its `tokenize_word` and `detokenize_word`, though it redefines `tokenize_word` locally).
@@ -148,6 +156,12 @@ Central configuration hub. No functions -- exposes constants used by all other m
 | `TIER_1` through `TIER_4` | Consonant groupings by difficulty (common to rare) |
 | `PREFIXES`, `SUFFIXES`, `ENDINGS`, `OCURRENCES` | Linguistic pattern sets for filtering |
 | `EXTENSIVE_PREFIXES`, `EXTENSIVE_SUFIXES` | Extended pattern sets used by `nouns_csv.py` |
+| `BOARDS_PATH` | Path to board/rack image directory |
+| `PREMIUM_SQUARES` | Standard 15×15 premium square map (TW, DW, TL, DL) |
+| `ALL_TILES` | All 28 playable tile types in internal representation |
+| `INTERNAL_POINTS` | Point values with digraphs using encoded keys (`1`/`2`/`3`) |
+| `POINTS_TO_TILES` | Reverse lookup: point value → set of tiles with that value |
+| `TOTAL_BLANKS`, `TOTAL_TILES` | Tile bag totals (2 blanks, 100 total) |
 
 ### preprocessing.py
 
@@ -157,6 +171,65 @@ Foundation for all word manipulation across the project.
 |----------|-----------|-------------|
 | `tokenize_word` | `(word: str) -> list[str]` | Splits a word into tokens, detecting digraphs (`ch`, `ll`, `rr`) from their human-readable form and mapping them to internal codes |
 | `detokenize_word` | `(tokens: list[str]) -> str` | Reconstructs a readable word from a token list, expanding digit codes back to digraph strings |
+
+### analyze_board.py
+
+Board image analyzer and best move finder. Reads a photograph of a Spanish Scrabble board, identifies all tiles via OCR, and finds the highest-scoring legal plays using the Appel-Jacobson algorithm with a trie built from the FISE2 lexicon.
+
+**Architecture:**
+
+The module is organized in four parts:
+
+- **Part A — OCR:** Grayscale tile detection with subscript-based validation. Each real tile has a point-value subscript digit; the module classifies tiles by subscript size (`1pt`, `multi`, `10pt`) to disambiguate OCR confusions (N/Ñ, R/RR, L/LL, Z). Blank tiles are detected via red-ink ratio. Post-OCR validation corrects bag-limit violations (e.g., excess Ñ → N).
+- **Part B — Trie & Cross-checks:** Builds a trie from the FISE2 lexicon (cached as pickle). Computes per-cell cross-check sets for perpendicular word validation.
+- **Part C — Scoring:** Computes move scores with premium squares (DW, TW, DL, TL), cross-word scores, and 50-point bingo bonus for using all 7 rack tiles.
+- **Part D — Move Generation:** Appel-Jacobson algorithm with anchor-based search. Uses board transposition for vertical moves. Supports blank tiles (wildcards).
+
+**Key functions:**
+
+| Function | Description |
+|----------|-------------|
+| `cell_has_tile(cell_img)` | Grayscale + subscript detection (two paths: red-ink for blanks, dark-ink + subscript for normal tiles) |
+| `_get_point_class(cell_img)` | Classifies tile by subscript digit: `1pt`, `multi`, `10pt`, or `unknown` |
+| `recognize_letter(cell_img, blank, reader)` | Multi-pass OCR with point-class disambiguation and shape fallbacks |
+| `validate_board_tiles(board)` | Post-OCR correction using bag limits (max 1 Ñ, 1 RR, 1 LL) |
+| `read_board_image(path, reader)` | Full board OCR pipeline: find bounds → extract cells → detect tiles → recognize letters → validate |
+| `read_rack_image(path, reader)` | OCR a rack image, returns up to 7 tile tokens |
+| `build_trie(lexicon_path)` | Build/load cached trie from FISE2 lexicon |
+| `compute_cross_checks(board, trie)` | Per-cell valid tile sets based on perpendicular words |
+| `find_best_moves(board, rack, trie)` | Appel-Jacobson move generation + scoring, returns sorted moves |
+| `compute_remaining_tiles(board, rack)` | Calculates unseen tiles from bag minus board minus rack |
+
+**CLI usage:**
+
+```bash
+# Board image + text rack
+python scrabble/analyze_board.py boards/Board1.jpg --rack AGUEIDA
+
+# Board image + rack image
+python scrabble/analyze_board.py boards/Board2.jpg --rack boards/rack2.jpg
+
+# With manual OCR corrections and debug output
+python scrabble/analyze_board.py boards/Board5.jpg --rack "AAÑICJM" \
+    --corrections "J2=V,D10=I" --debug --top 20
+
+# Blank tiles in text rack use '?'
+python scrabble/analyze_board.py boards/Board4.jpg --rack "?NOETOY"
+```
+
+**CLI options:**
+
+| Option | Description |
+|--------|-------------|
+| `board` | Path to board image (required) |
+| `--rack`, `-r` | Rack as image path or text (e.g., `AGUEIDA`, `?NOETOY` for blanks) |
+| `--top`, `-n` | Number of top moves to display (default: 10) |
+| `--debug`, `-d` | Print per-cell OCR info including point class |
+| `--corrections`, `-c` | Manual OCR corrections, e.g., `"D6=Y,B14=Z"` |
+
+**Position notation:** `B14` (row-col) = horizontal play, `14B` (col-row) = vertical play.
+
+**Input:** Board/rack images (JPG) + `LexiconFISE2.TXT` | **Output:** Ranked list of legal moves with scores
 
 ### clean_no_verbs.py
 
@@ -373,7 +446,30 @@ Computes synergy scores for Scrabble rack leaves — the letter combinations rem
 
 ## Usage
 
-Each module runs independently as a script. The typical workflow is:
+Each module runs independently as a script.
+
+### Board Analyzer
+
+Analyze a board photo and find the best moves:
+
+```bash
+# Basic usage: board image + text rack
+python scrabble/analyze_board.py boards/Board1.jpg --rack AGUEIDA
+
+# Rack from image, show top 20 moves
+python scrabble/analyze_board.py boards/Board3.jpg --rack boards/rack3.jpg --top 20
+
+# With OCR corrections and blank tile in rack
+python scrabble/analyze_board.py boards/Board4.jpg --rack "?NOETOY" --corrections "C13=V"
+
+# Debug mode shows per-cell OCR details
+python scrabble/analyze_board.py boards/Board5.jpg --rack "AAÑICJM" \
+    --corrections "J2=V,D10=I" --debug
+```
+
+The board analyzer automatically detects tiles using grayscale analysis with subscript digit validation, disambiguates common OCR confusions (N/Ñ, R/RR, L/LL) using tile point values, and auto-detects Z tiles via their unique "10" subscript. Use `--corrections` for tiles that can't be auto-distinguished (e.g., V vs Y — both 4 pts).
+
+### Word Study Tools
 
 ```bash
 # Step 1: Prepare the clean lexicon (required before all other scripts)
