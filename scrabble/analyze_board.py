@@ -779,17 +779,18 @@ def _extend_right(partial, node, col, row, start_col, rack,
 
 
 def _left_part(partial, node, limit, anchor_col, row, rack,
-               board_row, cross_checks_row, moves, new_info):
+               board_row, cross_checks_row, moves, new_tiles):
     # Try extending right from what we have so far
     start_col = anchor_col - len(partial)
+    # Compute positional new_info from new_tiles for _extend_right
+    new_info = [(start_col + i, tile, is_blank)
+                for i, (tile, is_blank) in enumerate(new_tiles)]
     _extend_right(partial, node, anchor_col, row, start_col, rack,
                   board_row, cross_checks_row, moves, new_info, anchor_col)
 
     if limit > 0:
-        col = anchor_col - len(partial) - 1
-        if col < 0:
+        if anchor_col - len(partial) - 1 < 0:
             return
-        valid = cross_checks_row[col]
         tried = set()
         for i, rack_tile in enumerate(rack):
             if rack_tile in tried:
@@ -799,19 +800,19 @@ def _left_part(partial, node, limit, anchor_col, row, rack,
 
             if rack_tile == '?':
                 for tile in ALL_TILES:
-                    if tile in valid and tile in node:
+                    if tile in node:
                         _left_part(
-                            [tile] + partial, node[tile], limit - 1,
+                            partial + [tile], node[tile], limit - 1,
                             anchor_col, row, new_rack, board_row,
                             cross_checks_row, moves,
-                            [(col, tile, True)] + new_info)
+                            new_tiles + [(tile, True)])
             else:
-                if rack_tile in valid and rack_tile in node:
+                if rack_tile in node:
                     _left_part(
-                        [rack_tile] + partial, node[rack_tile], limit - 1,
+                        partial + [rack_tile], node[rack_tile], limit - 1,
                         anchor_col, row, new_rack, board_row,
                         cross_checks_row, moves,
-                        [(col, rack_tile, False)] + new_info)
+                        new_tiles + [(rack_tile, False)])
 
 
 def _generate_horizontal_moves(board, rack, trie_root, cross_checks):
