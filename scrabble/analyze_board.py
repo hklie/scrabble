@@ -124,19 +124,24 @@ def _has_subscript(cell_img):
 
 
 def _get_point_class(cell_img):
-    """Classify tile by subscript digit size: '1pt', 'multi', or 'unknown'.
+    """Classify tile by subscript digit size: '1pt', 'multi', '10pt', or 'unknown'.
 
-    1-pt tiles (A,E,I,L,N,O,R,S,T,U) have a tiny '1' subscript (~4 dark px).
-    Multi-pt tiles (2-10 pts) have wider subscript digits (8-13 dark px).
+    1-pt tiles (A,E,I,L,N,O,R,S,T,U) have a tiny '1' subscript (~4 dark px, span=1).
+    Multi-pt tiles (2-8 pts) have single-digit subscripts (8-13 dark px, span=5).
+    10-pt tile (Z only) has two-digit '10' subscript (span >= 7).
     """
     _, sub_gray = _get_subscript_region(cell_img)
     dark_mask = sub_gray < 100
     dark_count = np.count_nonzero(dark_mask)
 
-    # Measure ink width: number of columns with any dark pixel
+    # Measure ink width and column span (first to last dark column)
     cols_with_ink = np.any(dark_mask, axis=0)
     ink_width = np.count_nonzero(cols_with_ink)
+    dark_cols = np.where(cols_with_ink)[0]
+    span = (dark_cols[-1] - dark_cols[0] + 1) if len(dark_cols) > 0 else 0
 
+    if span >= 7:
+        return '10pt'
     if dark_count >= 7 and ink_width >= 3:
         return 'multi'
     if 2 <= dark_count <= 5:
@@ -302,6 +307,10 @@ def recognize_letter(cell_img, blank, reader):
     if len(text) == 1 and text.isalpha():
         return text.lower()
 
+    # --- Subscript-based identification for Z (only 10-pt tile) ---
+    if point_class == '10pt':
+        return 'z'
+
     # --- Shape-based fallbacks for thin / tricky characters ---
     # Use higher-threshold mask for shape analysis (captures thin strokes better)
     shape_mask = mask_hi if (not blank and mask_hi is not None) else mask
@@ -315,12 +324,20 @@ def recognize_letter(cell_img, blank, reader):
         if s_ink_w < cw * 0.25:
             return 'i'
 
-        # Y shape: wider top half, narrow bottom half
-        half = shape_mask.shape[0] // 2
-        top_w = np.count_nonzero(np.any(shape_mask[:half, :] > 0, axis=0))
-        bot_w = np.count_nonzero(np.any(shape_mask[half:, :] > 0, axis=0))
-        if top_w > bot_w * 1.4 and bot_w > 0 and s_ink_w > cw * 0.25:
-            return 'y'
+        # Use ink bounding box for Y detection (letters don't start at row 0)
+        ink_rows = np.where(s_rows)[0]
+        y_top, y_bot = ink_rows[0], ink_rows[-1]
+        ink_region = shape_mask[y_top:y_bot+1, :]
+        ink_h = ink_region.shape[0]
+
+        if ink_h >= 4:
+            quarter = max(ink_h // 4, 1)
+            top_q = np.count_nonzero(np.any(ink_region[:quarter, :] > 0, axis=0))
+            bot_q = np.count_nonzero(np.any(ink_region[-quarter:, :] > 0, axis=0))
+
+            # Y shape: top quarter wider than bottom quarter (fork arms → stem)
+            if top_q > bot_q * 1.15 and bot_q > 0 and s_ink_w > cw * 0.25:
+                return 'y'
 
         # Z shape: ink clusters at top, middle-diagonal, and bottom
         third = shape_mask.shape[0] // 3
@@ -328,10 +345,9 @@ def recognize_letter(cell_img, blank, reader):
         mid_ink = np.count_nonzero(shape_mask[third:2*third, :])
         bot_ink = np.count_nonzero(shape_mask[2*third:, :])
         if top_ink > 0 and bot_ink > 0 and mid_ink > 0:
-            # Z has horizontal strokes at top/bottom → wide, and diagonal in middle
             top_w2 = np.count_nonzero(np.any(shape_mask[:third, :] > 0, axis=0))
             bot_w2 = np.count_nonzero(np.any(shape_mask[2*third:, :] > 0, axis=0))
-            if top_w2 > cw * 0.35 and bot_w2 > cw * 0.35 and text == '':
+            if top_w2 > cw * 0.25 and bot_w2 > cw * 0.25:
                 return 'z'
 
     return '?'
