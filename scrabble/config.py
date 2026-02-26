@@ -77,3 +77,8 @@ for _r, _c in [(0,3),(0,11),(2,6),(2,8),(3,0),(3,7),(3,14),(6,2),(6,6),(6,8),(6,
                (14,3),(14,11)]:
     PREMIUM_SQUARES[(_r,_c)] = 'DL'
 
+# Reverse lookup: point value → set of tiles that have that value
+POINTS_TO_TILES = {}
+for _tile, _pts in SCRABBLE_POINTS.items():
+    POINTS_TO_TILES.setdefault(_pts, set()).add(_tile)
+

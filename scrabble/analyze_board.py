@@ -101,79 +101,95 @@ def extract_cells(img, bounds):
     return cells
 
 
-def cell_has_tile(cell_img):
-    """Detect whether a cell contains a tile (yellow/beige region)."""
-    hsv = cv2.cvtColor(cell_img, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-
-    # Sample the center 50% of the cell to avoid grid lines
+def _get_subscript_region(cell_img):
+    """Extract the subscript zone: bottom 30% height, right 40% width."""
     ch, cw = cell_img.shape[:2]
-    margin_r, margin_c = ch // 4, cw // 4
-    center_h = h[margin_r:ch-margin_r, margin_c:cw-margin_c]
-    center_s = s[margin_r:ch-margin_r, margin_c:cw-margin_c]
-    center_v = v[margin_r:ch-margin_r, margin_c:cw-margin_c]
-
-    # Yellow/beige tile: H∈[15,35], S>40, V>160
-    yellow_mask = (center_h >= 15) & (center_h <= 35) & (center_s > 40) & (center_v > 160)
-    yellow_ratio = np.count_nonzero(yellow_mask) / max(yellow_mask.size, 1)
-
-    # White tile (blank): S<50, V>200
-    white_mask = (center_s < 50) & (center_v > 200)
-    white_ratio = np.count_nonzero(white_mask) / max(white_mask.size, 1)
-
-    return yellow_ratio > 0.25 or white_ratio > 0.40
+    y_start = int(ch * 0.70)
+    x_start = int(cw * 0.60)
+    sub_img = cell_img[y_start:, x_start:]
+    sub_gray = cv2.cvtColor(sub_img, cv2.COLOR_BGR2GRAY)
+    return sub_img, sub_gray
 
 
-def _cell_has_letter_content(cell_img):
-    """Secondary check: verify the cell actually has dark/red letter pixels.
+def _has_subscript(cell_img):
+    """Check if the cell has a subscript digit (present on every real tile).
 
-    Filters out false positives from board markings (e.g. the center star).
+    Real subscript digits produce 3-15 dark pixels (~2-9% of the zone).
+    Premium squares / dark empty cells fill 85%+ of the zone — reject those.
+    """
+    _, sub_gray = _get_subscript_region(cell_img)
+    dark_count = np.count_nonzero(sub_gray < 100)
+    total = max(sub_gray.size, 1)
+    return dark_count >= 3 and dark_count / total < 0.50
+
+
+def _get_point_class(cell_img):
+    """Classify tile by subscript digit size: '1pt', 'multi', or 'unknown'.
+
+    1-pt tiles (A,E,I,L,N,O,R,S,T,U) have a tiny '1' subscript (~4 dark px).
+    Multi-pt tiles (2-10 pts) have wider subscript digits (8-13 dark px).
+    """
+    _, sub_gray = _get_subscript_region(cell_img)
+    dark_mask = sub_gray < 100
+    dark_count = np.count_nonzero(dark_mask)
+
+    # Measure ink width: number of columns with any dark pixel
+    cols_with_ink = np.any(dark_mask, axis=0)
+    ink_width = np.count_nonzero(cols_with_ink)
+
+    if dark_count >= 7 and ink_width >= 3:
+        return 'multi'
+    if 2 <= dark_count <= 5:
+        return '1pt'
+    return 'unknown'
+
+
+def cell_has_tile(cell_img):
+    """Detect whether a cell contains a tile using grayscale + subscript confirmation.
+
+    Two detection paths:
+    1. Blank tiles: detected by red ink in center (color check)
+    2. Normal tiles: dark letter ink (>10% dark pixels) + subscript digit
     """
     ch, cw = cell_img.shape[:2]
-    # Look in center region
     margin_r, margin_c = ch // 4, cw // 4
     center = cell_img[margin_r:ch-margin_r, margin_c:cw-margin_c]
+    total = max(center.shape[0] * center.shape[1], 1)
 
-    gray = cv2.cvtColor(center, cv2.COLOR_BGR2GRAY)
-    # Dark pixels (letter ink on normal tile)
-    dark_count = np.count_nonzero(gray < 80)
-
-    # Red pixels (letter ink on blank tile)
+    # Path 1: Blank tile — red ink makes grayscale look uniformly dark,
+    # so detect via color. Red letter ink on white/cream tile = 5-50% red.
+    # Uniformly red cells (>50%) are TW premium squares, not tiles.
     b, g, r = cv2.split(center)
-    red_count = np.count_nonzero((r > 130) & (g.astype(int) < 120) & (b.astype(int) < 120))
+    red_mask = (r > 150) & (g.astype(int) < 100) & (b.astype(int) < 100)
+    red_ratio = np.count_nonzero(red_mask) / total
+    if 0.05 < red_ratio < 0.50:
+        return True
 
-    # Need a meaningful amount of letter pixels
-    total_pixels = max(center.shape[0] * center.shape[1], 1)
-    return (dark_count + red_count) / total_pixels > 0.02
+    # Path 2: Normal tile — needs dark letter ink on lighter tile background
+    gray = cv2.cvtColor(center, cv2.COLOR_BGR2GRAY)
+    dark_ratio = np.count_nonzero(gray < 80) / max(gray.size, 1)
+    if dark_ratio <= 0.10:
+        return False
+
+    # Subscript confirmation: real tiles have a point-value subscript digit
+    return _has_subscript(cell_img)
+
 
 
 def is_blank_tile(cell_img):
-    """Detect whether a tile has red text (= blank tile, worth 0 pts)."""
-    b, g, r = cv2.split(cell_img)
+    """Detect whether a tile has red text (= blank tile, worth 0 pts).
+
+    Samples center 50% to avoid grid line artifacts. Uses ratio threshold.
+    """
+    ch, cw = cell_img.shape[:2]
+    margin_r, margin_c = ch // 4, cw // 4
+    center = cell_img[margin_r:ch-margin_r, margin_c:cw-margin_c]
+
+    b, g, r = cv2.split(center)
     red_mask = (r > 150) & (g.astype(int) < 100) & (b.astype(int) < 100)
-    red_count = np.count_nonzero(red_mask)
-    return red_count > 40
+    total = max(center.shape[0] * center.shape[1], 1)
+    return np.count_nonzero(red_mask) / total > 0.05
 
-
-def _has_tilde(mask):
-    """Check if there's a tilde (~) above the main letter body via connected components."""
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask)
-    if num_labels <= 2:
-        return False  # background + 1 component = no tilde
-
-    # Find the largest foreground component
-    areas = stats[1:, cv2.CC_STAT_AREA]
-    main_idx = np.argmax(areas) + 1
-    main_top = stats[main_idx, cv2.CC_STAT_TOP]
-
-    # Any smaller component whose bottom edge is above the main body = tilde
-    for i in range(1, num_labels):
-        if i == main_idx:
-            continue
-        comp_bottom = stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT]
-        if comp_bottom < main_top + 2 and stats[i, cv2.CC_STAT_AREA] > 3:
-            return True
-    return False
 
 
 def _ocr_mask(mask, reader, allowlist, low_confidence=False):
@@ -192,7 +208,11 @@ def _ocr_mask(mask, reader, allowlist, low_confidence=False):
 
 
 def recognize_letter(cell_img, blank, reader):
-    """OCR a single tile cell, returning a lowercase tile token."""
+    """OCR a single tile cell, returning a lowercase tile token.
+
+    Uses multi-pass OCR followed by subscript point-class disambiguation
+    for N/Ñ, R/RR, L/LL confusions.
+    """
     ch, cw = cell_img.shape[:2]
 
     # Crop top 75% to exclude the subscript point value
@@ -218,13 +238,6 @@ def recognize_letter(cell_img, blank, reader):
     if not blank:
         _, mask_hi = cv2.threshold(gray, 130, 255, cv2.THRESH_BINARY_INV)
 
-    # --- Ñ detection: check tilde FIRST (before OCR) on both thresholds ---
-    if not blank:
-        if _has_tilde(mask):
-            return 'ñ'
-        if _has_tilde(mask_hi):
-            return 'ñ'
-
     # --- Pass 1: OCR with conservative threshold ---
     allowlist = 'ABCDEFGHIJLMNOPQRSTUVXYZ'
     text = _ocr_mask(mask, reader, allowlist)
@@ -246,13 +259,19 @@ def recognize_letter(cell_img, blank, reader):
             if text3 and len(text3) <= 2:
                 text = text3
 
-    # --- Digraph handling ---
+    # --- Digraph handling (explicit two-char OCR results) ---
     if text in ('CH', 'C H'):
         return 'ch'
     if text in ('LL', 'L L'):
-        return 'll'
+        if likely_digraph:
+            return 'll'
+        # Narrow "LL" — fall through to point-class check for L
+        text = 'L'
     if text in ('RR', 'R R'):
-        return 'rr'
+        if likely_digraph:
+            return 'rr'
+        # Narrow "RR" is likely Ñ (tilde misread as second character)
+        return 'ñ'
 
     # Width-based digraph fallback
     if likely_digraph and len(text) <= 1:
@@ -261,9 +280,24 @@ def recognize_letter(cell_img, blank, reader):
         if text in ('L', ''):
             return 'll'
 
-    # N returned by OCR without tilde detected above → plain n
+    # --- Point-class disambiguation for N/Ñ, R/RR, L/LL ---
+    # Skip for blank tiles — their subscript is always "0" (0 pts), not the tile value
+    point_class = _get_point_class(cell_img) if not blank else 'unknown'
+
     if text == 'N':
+        if point_class == 'multi':
+            return 'ñ'      # Ñ is 8 pts, N is 1 pt
         return 'n'
+
+    if text == 'R' and not likely_digraph:
+        if point_class == 'multi':
+            return 'ñ'      # Narrow multi-pt 'R' is likely Ñ (8 pts); real RR would be wide
+        return 'r'
+
+    if text == 'L' and not likely_digraph:
+        if point_class == 'multi':
+            return 'll'     # LL is 8 pts, L is 1 pt
+        return 'l'
 
     if len(text) == 1 and text.isalpha():
         return text.lower()
@@ -303,6 +337,45 @@ def recognize_letter(cell_img, blank, reader):
     return '?'
 
 
+def validate_board_tiles(board, debug=False):
+    """Post-OCR correction: fix tiles that exceed bag limits.
+
+    Converts excess Ñ→N, RR→R, LL→L (the most common OCR confusions).
+    Logs warnings for other over-counts.
+    """
+    # Count non-blank tiles on the board
+    counts = Counter()
+    positions = {}  # tile → list of (r, c)
+    for r in range(15):
+        for c in range(15):
+            if board[r][c] is not None:
+                tile, is_blank = board[r][c]
+                if not is_blank:
+                    display = to_display(tile)
+                    counts[display] += 1
+                    positions.setdefault(display, []).append((r, c))
+
+    # Correction map: over-counted tile → replacement tile
+    corrections = {'ñ': 'n', 'rr': 'r', 'll': 'l'}
+
+    for tile_display, max_count in SCRABBLE_TILES.items():
+        if counts[tile_display] > max_count:
+            excess = counts[tile_display] - max_count
+            if tile_display in corrections:
+                replacement = corrections[tile_display]
+                repl_internal = to_internal(replacement)
+                # Convert the last N excess occurrences
+                for r, c in positions[tile_display][-excess:]:
+                    board[r][c] = (repl_internal, False)
+                    if debug:
+                        print(f"  Validation: {tile_display.upper()} at {pos_notation(r, c)}"
+                              f" → {replacement.upper()} (bag limit {max_count})")
+            else:
+                if debug:
+                    print(f"  Warning: {tile_display.upper()} count {counts[tile_display]}"
+                          f" exceeds bag limit {max_count}")
+
+
 def read_board_image(path, reader, debug=False):
     """Read a board image and return a 15×15 board + metadata.
 
@@ -326,11 +399,6 @@ def read_board_image(path, reader, debug=False):
             cell_img = cells[r][c]
             if not cell_has_tile(cell_img):
                 continue
-            # Secondary filter: must have actual letter pixels
-            if not _cell_has_letter_content(cell_img):
-                if debug:
-                    print(f"  Skipped non-tile at {pos_notation(r, c)} (no letter content)")
-                continue
 
             blank = is_blank_tile(cell_img)
             letter = recognize_letter(cell_img, blank, reader)
@@ -347,9 +415,12 @@ def read_board_image(path, reader, debug=False):
                 blanks_info.append((r, c, to_display(internal)))
 
             if debug:
+                pt_class = _get_point_class(cell_img)
                 marker = '*' if blank else ''
-                print(f"  {pos_notation(r, c)}: {to_display(internal).upper()}{marker}")
+                print(f"  {pos_notation(r, c)}: {to_display(internal).upper()}{marker}"
+                      f" [{pt_class}]")
 
+    validate_board_tiles(board, debug=debug)
     return board, blanks_info
 
 
@@ -400,7 +471,7 @@ def read_rack_image(path, reader):
     if candidates:
         # Sort by: fewest excess/missing tiles, then highest min confidence
         candidates.sort(key=lambda c: (c[2], -c[1]))
-        best_tokens = candidates[0][0]
+        best_tokens = candidates[0][0][:7]  # Hard cap at 7 tiles
         return [to_internal(t) for t in best_tokens]
 
     return []
