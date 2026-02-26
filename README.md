@@ -18,6 +18,7 @@ scrabble/
 │   ├── word_analysis.csv          # [generated] Full word metadata CSV
 │   ├── verbs.csv                  # [generated] Verb metadata CSV
 │   ├── chains_study_list.txt      # [generated] Transformation chains
+│   ├── synergy.csv                # [generated] Rack leave synergy values
 │   ├── ends_with_*.txt            # [generated] Words grouped by ending
 │   ├── prefix_*.txt               # [generated] Words grouped by prefix
 │   ├── suffix_*.txt               # [generated] Words grouped by suffix
@@ -43,7 +44,8 @@ scrabble/
 │   ├── filter_by_tiers.py         # Filter words by consonant difficulty tiers
 │   ├── unique_anagrams.py         # Find words with no anagrams in the lexicon
 │   ├── endings_with_useful_plurals.py  # Targeted length+ending combinations
-│   └── chains.py                  # Word transformation chain builder
+│   ├── chains.py                  # Word transformation chain builder
+│   └── synergy.py                 # Rack leave synergy value computation
 │
 └── README.md
 ```
@@ -97,15 +99,15 @@ Spanish Scrabble treats `ch`, `ll`, and `rr` as single tiles. The raw lexicon fi
                     │  (cleaned non-verb lexicon)  │
                     └──────────────┬──────────────┘
                                    │
-          ┌────────────┬───────────┼───────────┬────────────┬───────────┐
-          │            │           │           │            │           │
-          ▼            ▼           ▼           ▼            ▼           ▼
-    probability.py  study_list.py  nouns_csv.py  Pattern    Anagram   chains.py
+          ┌────────────┬───────────┼───────────┬────────────┬───────────┬───────────┐
+          │            │           │           │            │           │           │
+          ▼            ▼           ▼           ▼            ▼           ▼           ▼
+    probability.py  study_list.py  nouns_csv.py  Pattern    Anagram   chains.py  synergy.py
                                                Filters    Analysis
-          │            │           │           │            │           │
-          ▼            ▼           ▼           │            ▼           ▼
-     Ranked_       Optimized_   word_         │      singleton_    chains_
-     Scrabble_     Study_       analysis.     │      anagrams_     study_
+          │            │           │           │            │           │           │
+          ▼            ▼           ▼           │            ▼           ▼           ▼
+     Ranked_       Optimized_   word_         │      singleton_    chains_     synergy.
+     Scrabble_     Study_       analysis.     │      anagrams_     study_      csv
      Suggestions   List.txt     csv           │      *.txt         list.txt
      .txt                                     │
                                               ├──► ends_with_*.txt
@@ -349,6 +351,26 @@ Builds word transformation chains where consecutive words differ by exactly one 
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `chains_study_list.txt`
 
+### synergy.py
+
+Computes synergy scores for Scrabble rack leaves — the letter combinations remaining after playing a word. High-synergy leaves co-occur frequently in valid words. Uses an inverted index for fast submultiset matching against the corpus.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `load_corpus` | `() -> list[Counter]` | Reads `No_verbos_filtrados.txt`, tokenizes each word, returns a list of token-count Counters |
+| `build_inverted_index` | `(corpus_counters) -> dict` | Builds `(token, min_count) -> set[word_index]` mapping for fast subset queries |
+| `count_subset_matches` | `(combo_counter, inv_index) -> int` | Counts corpus words containing all tokens in a combination via set intersection |
+| `is_valid_combo` | `(combo_counter) -> bool` | Checks that a combination respects `SCRABBLE_TILES` tile count limits |
+| `compute_synergies_for_size` | `(token_pool, size, inv_index) -> list[(tuple, int)]` | Generates all multiset combinations of a given size from a token pool, scores valid ones |
+| `percentile_normalize` | `(results) -> list[(tuple, int)]` | Maps raw word-counts to 0–100 integers by percentile rank within each length group |
+| `format_combo` | `(combo_tokens) -> str` | Converts internal token codes to display format (e.g., `a+ch+s`) |
+| `write_csv` | `(all_scored)` | Writes scored combinations to `synergy.csv` |
+| `compute_synergy` | `()` | Main orchestrator: loads corpus, builds index, computes synergies for sizes 1–5, normalizes, writes output |
+
+**Combination generation:** Sizes 1–2 use all 28 tokens exhaustively. Sizes 3–5 use the top 10 tokens by size-1 synergy as a pool.
+
+**Input:** `No_verbos_filtrados.txt` | **Output:** `synergy.csv`
+
 ## Usage
 
 Each module runs independently as a script. The typical workflow is:
@@ -364,6 +386,7 @@ python scrabble/nouns_csv.py            # Full word analysis CSV
 python scrabble/verbs_csv.py            # Verb classification CSV
 python scrabble/generator.py            # Interactive word generator
 python scrabble/chains.py              # Transformation chains
+python scrabble/synergy.py             # Rack leave synergy values
 
 # Step 3: Run any filter module (most prompt for min/max token length)
 python scrabble/endings.py

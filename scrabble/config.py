@@ -3,6 +3,7 @@ import os
 BASE_PATH = '/home/hk/Code/BackEnd/scrabble/Data'
 
 LEXICON = os.path.join(BASE_PATH, "Lexicon.TXT")
+LEXICON_FISE2 = os.path.join(BASE_PATH, "Master Copy", "LexiconFISE2.TXT")
 VERBS = os.path.join(BASE_PATH, "Verbos.txt")
 CATEGORIZED_VERBS = os.path.join(BASE_PATH, "Master Copy", "Verbos_clasificados.TXT")
 NO_VERBS_FILE = os.path.join(BASE_PATH, "No_verbos.txt")
@@ -44,6 +45,35 @@ EXTENSIVE_PREFIXES = PREFIXES.union({'re', 'des', 'dis', 'sub', 'ana', 'anti', '
                                      'pre', 'pro', 'sub', 'tele', 'teo', 'meso', 'ex', 'trans', 'in', 'im', 'lito',
                                      'apo', 'cata', 'en', 'hemi', 'peri', 'bar', 'alo', 'cito', 'contra', 'sobre'})
 
-EXTENSIVE_SUFIXES = SUFFIXES.union({'able', 'acha', 'acho', 'afV', 'agV', 'ao', 'biV', 'ego', 'giV', 'ie', 'miV',
-                                    'omV', 'rrV'})
+EXTENSIVE_SUFIXES = SUFFIXES.union({'able', 'acha', 'acho', 'ucho', 'ucha', 'afV', 'agV', 'ao', 'biV', 'ego', 'giV',
+                                    'ie', 'miV', 'omV', 'rrV'})
+
+# --- Board Analysis Constants ---
+
+BOARDS_PATH = os.path.join(os.path.dirname(BASE_PATH), 'boards')
+TOTAL_BLANKS = 2
+TOTAL_TILES = sum(SCRABBLE_TILES.values()) + TOTAL_BLANKS  # 100
+
+# All 28 playable tile types in internal representation (digraphs encoded as 1/2/3)
+ALL_TILES = list('abcdefghijlmnñopqrstuvxyz') + ['1', '2', '3']
+
+# Internal point values (digraphs use their encoded keys)
+INTERNAL_POINTS = {k: v for k, v in SCRABBLE_POINTS.items()}
+INTERNAL_POINTS['1'] = SCRABBLE_POINTS['ch']
+INTERNAL_POINTS['2'] = SCRABBLE_POINTS['ll']
+INTERNAL_POINTS['3'] = SCRABBLE_POINTS['rr']
+
+# Standard 15x15 premium square map (same for Spanish Scrabble)
+PREMIUM_SQUARES = {}
+for _r, _c in [(0,0),(0,7),(0,14),(7,0),(7,14),(14,0),(14,7),(14,14)]:
+    PREMIUM_SQUARES[(_r,_c)] = 'TW'
+for _r, _c in [(1,1),(1,13),(2,2),(2,12),(3,3),(3,11),(4,4),(4,10),(7,7),
+               (10,4),(10,10),(11,3),(11,11),(12,2),(12,12),(13,1),(13,13)]:
+    PREMIUM_SQUARES[(_r,_c)] = 'DW'
+for _r, _c in [(1,5),(1,9),(5,1),(5,5),(5,9),(5,13),(9,1),(9,5),(9,9),(9,13),(13,5),(13,9)]:
+    PREMIUM_SQUARES[(_r,_c)] = 'TL'
+for _r, _c in [(0,3),(0,11),(2,6),(2,8),(3,0),(3,7),(3,14),(6,2),(6,6),(6,8),(6,12),
+               (7,3),(7,11),(8,2),(8,6),(8,8),(8,12),(11,0),(11,7),(11,14),(12,6),(12,8),
+               (14,3),(14,11)]:
+    PREMIUM_SQUARES[(_r,_c)] = 'DL'
 
