@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="/manifest.json">
+<title>Scrabble Duplicado — Jugador</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee;
+         min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* Join screen */
+  .join-screen { display: flex; flex-direction: column; align-items: center;
+                 justify-content: center; min-height: 100vh; padding: 24px; }
+  .join-screen h1 { font-size: 1.5em; color: #e94560; margin-bottom: 24px; }
+  .join-screen input { width: 100%; max-width: 300px; padding: 12px; font-size: 1.1em;
+                        border: 2px solid #0f3460; border-radius: 8px; background: #16213e;
+                        color: #eee; margin-bottom: 12px; text-align: center; }
+  .join-screen input::placeholder { color: #666; }
+  .join-screen .btn { width: 100%; max-width: 300px; }
+  .error-msg { color: #e94560; font-size: 0.9em; margin-top: 8px; min-height: 20px; }
+
+  /* Game screen */
+  .game-screen { display: none; flex-direction: column; min-height: 100vh; }
+  .game-header { background: #16213e; padding: 10px 16px; display: flex;
+                 justify-content: space-between; align-items: center; }
+  .game-header .name { font-weight: bold; color: #4ecca3; }
+  .game-header .round-info { color: #aaa; font-size: 0.9em; }
+
+  .timer-bar { text-align: center; padding: 8px; font-size: 2em; font-weight: bold;
+               font-family: monospace; }
+  .timer-bar.urgent { color: #e94560; }
+
+  .rack { display: flex; justify-content: center; gap: 6px; padding: 12px; flex-wrap: wrap; }
+  .rack-tile { width: 44px; height: 44px; background: #c7a94e; color: #1a1a2e; font-weight: bold;
+               font-size: 1.3em; display: flex; align-items: center; justify-content: center;
+               border-radius: 6px; }
+
+  .play-section { flex: 1; display: flex; flex-direction: column; align-items: center;
+                  justify-content: center; padding: 16px; gap: 12px; }
+  .play-input { width: 100%; max-width: 320px; padding: 14px; font-size: 1.2em;
+                border: 2px solid #0f3460; border-radius: 8px; background: #16213e;
+                color: #eee; text-align: center; font-family: monospace; }
+  .play-input::placeholder { color: #555; }
+  .play-hint { color: #888; font-size: 0.8em; text-align: center; }
+
+  .btn { background: #4ecca3; color: #1a1a2e; border: none; padding: 14px 32px; font-size: 1.1em;
+         font-weight: bold; border-radius: 8px; cursor: pointer; }
+  .btn:hover { background: #3daa8a; }
+  .btn:disabled { background: #555; cursor: not-allowed; }
+
+  .status-msg { text-align: center; padding: 12px; font-size: 1em; min-height: 40px; }
+  .status-msg.success { color: #4ecca3; }
+  .status-msg.fail { color: #e94560; }
+
+  /* Results overlay */
+  .result-card { background: #16213e; border-radius: 12px; padding: 20px; margin: 16px;
+                 text-align: center; }
+  .result-card h2 { color: #4ecca3; margin-bottom: 8px; }
+  .result-card .score { font-size: 2.5em; font-weight: bold; }
+  .result-card .master-info { color: #aaa; margin-top: 8px; font-size: 0.9em; }
+  .result-card .standing { color: #c7a94e; margin-top: 8px; }
+
+  /* Confirmation overlay */
+  .confirm-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                     background: rgba(0,0,0,0.85); z-index: 50; flex-direction: column;
+                     align-items: center; justify-content: center; padding: 24px; }
+  .confirm-card { background: #16213e; border-radius: 12px; padding: 24px; text-align: center;
+                  max-width: 340px; width: 100%; }
+  .confirm-card h3 { color: #4ecca3; margin-bottom: 12px; }
+  .confirm-word { font-size: 1.8em; font-family: monospace; margin: 12px 0; letter-spacing: 2px; }
+  .confirm-word .blank-letter { color: #e94560; border-bottom: 2px solid #e94560; }
+  .confirm-word .regular-letter { color: #c7a94e; }
+  .confirm-pos { color: #aaa; font-size: 1em; margin-bottom: 16px; }
+  .confirm-buttons { display: flex; gap: 12px; justify-content: center; }
+  .btn-cancel { background: #555; color: #eee; border: none; padding: 12px 24px; font-size: 1em;
+                font-weight: bold; border-radius: 8px; cursor: pointer; }
+  .btn-cancel:hover { background: #666; }
+
+  .rack-tile.blank { background: #8a7535; }
+
+  /* Fullscreen prompt */
+  .fullscreen-prompt { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                       background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column;
+                       align-items: center; justify-content: center; padding: 24px; }
+  .fullscreen-prompt p { color: #eee; font-size: 1.1em; margin-bottom: 16px; text-align: center; }
+
+  .waiting-msg { text-align: center; padding: 40px 16px; color: #aaa; font-size: 1.1em; }
+</style>
+</head>
+<body>
+
+  <!-- Join screen -->
+  <div class="join-screen" id="joinScreen">
+    <h1 id="gameTitle">Scrabble Duplicado</h1>
+    <input id="codeInput" type="text" inputmode="numeric" maxlength="4" placeholder="Codigo de Sala" autocomplete="off">
+    <input id="nameInput" type="text" maxlength="20" placeholder="Tu Nombre" autocomplete="off">
+    <button class="btn" onclick="joinGame()">Entrar</button>
+    <div class="error-msg" id="joinError"></div>
+  </div>
+
+  <!-- Fullscreen prompt -->
+  <div class="fullscreen-prompt" id="fullscreenPrompt">
+    <p>Para juego limpio, la app se ejecuta en pantalla completa.<br>Salir sera registrado.</p>
+    <button class="btn" onclick="goFullscreen()">Pantalla Completa</button>
+  </div>
+
+  <!-- Game screen -->
+  <div class="game-screen" id="gameScreen">
+    <div class="game-header">
+      <span class="name" id="playerName"></span>
+      <span class="round-info" id="roundInfo">Esperando al moderador...</span>
+    </div>
+    <div class="timer-bar" id="timer"></div>
+    <div class="rack" id="rackContainer"></div>
+
+    <div class="play-section" id="playSection">
+      <div class="waiting-msg" id="waitingMsg">Esperando inicio de ronda...</div>
+      <input class="play-input" id="playInput" type="text" placeholder="PALABRA POSICION"
+             autocomplete="off" style="display:none">
+      <div class="play-hint" id="playHint" style="display:none">
+        MAYUSCULAS = fichas normales, minusculas = comodin<br>
+        ej. CORTEs H8 — la s es un comodin
+      </div>
+      <button class="btn" id="submitBtn" onclick="confirmPlay()" style="display:none">Enviar</button>
+      <div class="status-msg" id="statusMsg"></div>
+    </div>
+
+    <div id="resultCard"></div>
+  </div>
+
+  <!-- Confirmation overlay -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-card">
+      <h3>Confirma tu jugada</h3>
+      <div class="confirm-word" id="confirmWord"></div>
+      <div class="confirm-pos" id="confirmPos"></div>
+      <div class="confirm-buttons">
+        <button class="btn-cancel" onclick="cancelConfirm()">Editar</button>
+        <button class="btn" onclick="doSubmit()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let ws = null;
+let playerName = "";
+let timerInterval = null;
+let roundActive = false;
+let submitted = false;
+let wakeLock = null;
+
+// Wake Lock: prevent screen from going dark
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { /* Wake Lock not supported or denied */ }
+}
+
+// Re-acquire wake lock when tab becomes visible again
+document.addEventListener("visibilitychange", async () => {
+  if (!document.hidden && !wakeLock) {
+    await requestWakeLock();
+  }
+});
+
+function joinGame() {
+  const code = document.getElementById("codeInput").value.trim();
+  const name = document.getElementById("nameInput").value.trim();
+  const errEl = document.getElementById("joinError");
+
+  if (!code || code.length !== 4) { errEl.textContent = "Ingresa el codigo de 4 digitos."; return; }
+  if (!name) { errEl.textContent = "Ingresa tu nombre."; return; }
+  errEl.textContent = "";
+
+  ws = new WebSocket(`ws://${location.host}/ws/player`);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({cmd: "join", code: code, name: name}));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+  ws.onclose = () => {
+    errEl.textContent = "Desconectado del servidor.";
+  };
+}
+
+function handleMessage(msg) {
+  if (msg.type === "error") {
+    document.getElementById("joinError").textContent = msg.msg;
+  }
+  else if (msg.type === "joined") {
+    playerName = msg.name;
+    if (msg.title) {
+      document.getElementById("gameTitle").textContent = msg.title;
+      document.title = msg.title;
+    }
+    document.getElementById("joinScreen").style.display = "none";
+    document.getElementById("gameScreen").style.display = "flex";
+    document.getElementById("playerName").textContent = playerName;
+
+    // Request wake lock to keep screen on
+    requestWakeLock();
+
+    // Prompt fullscreen
+    document.getElementById("fullscreenPrompt").style.display = "flex";
+  }
+  else if (msg.type === "round_start") {
+    onRoundStart(msg);
+  }
+  else if (msg.type === "submitted") {
+    submitted = true;
+    document.getElementById("submitBtn").disabled = true;
+    document.getElementById("playInput").disabled = true;
+    document.getElementById("statusMsg").textContent = "Jugada enviada!";
+    document.getElementById("statusMsg").className = "status-msg success";
+  }
+  else if (msg.type === "round_results") {
+    onRoundResults(msg);
+  }
+  else if (msg.type === "game_over") {
+    roundActive = false;
+    stopTimer();
+    document.getElementById("waitingMsg").textContent = "Fin del Juego!";
+    document.getElementById("waitingMsg").style.display = "block";
+    document.getElementById("playInput").style.display = "none";
+    document.getElementById("playHint").style.display = "none";
+    document.getElementById("submitBtn").style.display = "none";
+  }
+}
+
+function goFullscreen() {
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  document.getElementById("fullscreenPrompt").style.display = "none";
+}
+
+// Anti-cheat: detect tab/app switches
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && roundActive && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({cmd: "tab_leave"}));
+  }
+});
+
+function onRoundStart(msg) {
+  roundActive = true;
+  submitted = false;
+
+  const totalLabel = msg.total_rounds > 0 ? ` / ${msg.total_rounds}` : "";
+  document.getElementById("roundInfo").textContent =
+    `Ronda ${msg.round}${totalLabel}  |  Bolsa: ${msg.bag_size}`;
+
+  // Rack (blanks shown as ? with distinct style)
+  document.getElementById("rackContainer").innerHTML = msg.rack.map(t => {
+    const cls = t === '?' ? 'rack-tile blank' : 'rack-tile';
+    return `<span class="${cls}">${t}</span>`;
+  }).join("");
+
+  // Show input
+  document.getElementById("waitingMsg").style.display = "none";
+  document.getElementById("resultCard").innerHTML = "";
+
+  const playInput = document.getElementById("playInput");
+  playInput.style.display = "block";
+  playInput.disabled = false;
+  playInput.value = "";
+  document.getElementById("playHint").style.display = "block";
+
+  const btn = document.getElementById("submitBtn");
+  btn.style.display = "inline-block";
+  btn.disabled = false;
+
+  document.getElementById("statusMsg").textContent = "";
+  document.getElementById("statusMsg").className = "status-msg";
+
+  startTimer(msg.time_seconds);
+  playInput.focus();
+}
+
+function startTimer(seconds) {
+  stopTimer();
+  let remaining = seconds;
+  const el = document.getElementById("timer");
+  const update = () => {
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    el.className = remaining <= 30 ? "timer-bar urgent" : "timer-bar";
+  };
+  update();
+  timerInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      el.textContent = "0:00";
+      el.className = "timer-bar urgent";
+      stopTimer();
+      // Auto-disable input if not submitted
+      if (!submitted) {
+        document.getElementById("submitBtn").disabled = true;
+        document.getElementById("playInput").disabled = true;
+        document.getElementById("statusMsg").textContent = "Tiempo agotado!";
+        document.getElementById("statusMsg").className = "status-msg fail";
+      }
+    } else {
+      update();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+let pendingPlay = "";
+
+function confirmPlay() {
+  if (submitted || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const raw = document.getElementById("playInput").value.trim();
+  if (!raw || raw.toUpperCase() === "PASS") {
+    pendingPlay = "PASS";
+    doSubmit();
+    return;
+  }
+
+  const parts = raw.split(/\s+/);
+  if (parts.length < 2) {
+    document.getElementById("statusMsg").textContent = "Formato: PALABRA POSICION (ej. CORTEs H8)";
+    document.getElementById("statusMsg").className = "status-msg fail";
+    return;
+  }
+
+  const word = parts[0];
+  const position = parts[1];
+  pendingPlay = raw;
+
+  // Render word with blanks highlighted
+  let wordHtml = "";
+  for (const ch of word) {
+    if (ch === ch.toLowerCase() && ch !== ch.toUpperCase()) {
+      wordHtml += `<span class="blank-letter">${ch.toUpperCase()}</span>`;
+    } else {
+      wordHtml += `<span class="regular-letter">${ch}</span>`;
+    }
+  }
+  document.getElementById("confirmWord").innerHTML = wordHtml;
+  document.getElementById("confirmPos").textContent = `Posicion: ${position.toUpperCase()}`;
+  document.getElementById("confirmOverlay").style.display = "flex";
+}
+
+function cancelConfirm() {
+  document.getElementById("confirmOverlay").style.display = "none";
+  document.getElementById("playInput").focus();
+}
+
+function doSubmit() {
+  document.getElementById("confirmOverlay").style.display = "none";
+  if (submitted || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({cmd: "submit", play: pendingPlay}));
+}
+
+function onRoundResults(msg) {
+  roundActive = false;
+  stopTimer();
+  document.getElementById("timer").textContent = "";
+
+  // Hide input
+  document.getElementById("playInput").style.display = "none";
+  document.getElementById("playHint").style.display = "none";
+  document.getElementById("submitBtn").style.display = "none";
+  document.getElementById("statusMsg").textContent = "";
+
+  // Show result card
+  const yr = msg.your_result || {};
+  const validLabel = yr.play === "PASS" ? "PASO" :
+                     (yr.valid ? `${yr.score} pts` : "NO VALIDA");
+  const validClass = yr.play === "PASS" ? "" : (yr.valid ? "success" : "fail");
+
+  // Find player position in leaderboard
+  let position = "-";
+  let total = 0;
+  let pct = 0;
+  for (let i = 0; i < msg.leaderboard.length; i++) {
+    if (msg.leaderboard[i].name === playerName) {
+      position = i + 1;
+      total = msg.leaderboard[i].total;
+      pct = msg.leaderboard[i].pct;
+      break;
+    }
+  }
+
+  let html = '<div class="result-card">';
+  html += `<h2>Ronda ${msg.round}</h2>`;
+  html += `<div>Tu jugada: <strong>${yr.play || "PASO"}</strong></div>`;
+  html += `<div class="score ${validClass}">${validLabel}</div>`;
+  html += `<div class="master-info">Master: ${msg.master_play} — ${msg.master_score} pts</div>`;
+  html += `<div class="standing">#${position} — Total: ${total} pts (${pct}% del master)</div>`;
+  html += '</div>';
+  document.getElementById("resultCard").innerHTML = html;
+
+  // Show waiting for next round
+  document.getElementById("waitingMsg").textContent = "Esperando siguiente ronda...";
+  document.getElementById("waitingMsg").style.display = "block";
+}
+
+// Allow Enter key to submit
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && roundActive && !submitted) {
+    // If confirmation overlay is visible, confirm; otherwise open it
+    if (document.getElementById("confirmOverlay").style.display === "flex") {
+      doSubmit();
+    } else {
+      confirmPlay();
+    }
+  }
+});
+</script>
+</body>
+</html>
