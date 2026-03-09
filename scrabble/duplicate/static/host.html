@@ -11,10 +11,10 @@
   .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
   .room-code { font-size: 2.4em; font-weight: bold; color: #0f3460; background: #e94560; padding: 4px 16px; border-radius: 8px; letter-spacing: 4px; }
   .info { color: #aaa; font-size: 1em; }
-  .players-bar { background: #16213e; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .player-tag { background: #0f3460; padding: 5px 12px; border-radius: 12px; font-size: 1em; }
-  .player-tag.warning { border: 2px solid #e94560; }
-  .player-tag.submitted { border: 2px solid #4ecca3; }
+  .players-bar { background: #16213e; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px;
+                  display: flex; align-items: center; gap: 16px; font-size: 1.1em; }
+  .players-count { color: #4ecca3; font-weight: bold; }
+  .players-warnings { color: #e94560; font-size: 0.9em; }
 
   .game-area { display: flex; gap: 16px; flex-wrap: wrap; }
   .board-section { flex: 1; min-width: 620px; }
@@ -86,7 +86,9 @@
   </div>
 
   <div class="players-bar" id="playersBar">
-    <span class="info">Jugadores: esperando...</span>
+    <span class="info">Jugadores:</span>
+    <span class="players-count" id="playerCount">0</span>
+    <span class="players-warnings" id="playerWarnings"></span>
   </div>
 
   <div class="game-area">
@@ -122,7 +124,8 @@ const PREMIUM_LABELS = {tw: "TP", dw: "DP", tl: "TL", dl: "DL"};
 const ws = new WebSocket(`ws://${location.host}/ws/host`);
 let timerInterval = null;
 let currentRound = 0;
-let playerTags = {};
+let playerCount = 0;
+let warningNames = new Set();
 
 ws.onmessage = (e) => {
   const msg = JSON.parse(e.data);
@@ -151,23 +154,16 @@ ws.onmessage = (e) => {
     onRoundResults(msg);
   }
   else if (msg.type === "game_over") {
-    document.getElementById("roundHeader").textContent = "Fin del Juego — " + (msg.reason || "");
+    document.getElementById("roundHeader").textContent =
+      "Fin del Juego \u2014 " + (msg.reason || "");
     document.getElementById("startBtn").style.display = "none";
     stopTimer();
   }
 };
 
 function renderPlayers(names) {
-  const bar = document.getElementById("playersBar");
-  if (names.length === 0) {
-    bar.innerHTML = '<span class="info">Jugadores: esperando...</span>';
-    return;
-  }
-  playerTags = {};
-  bar.innerHTML = names.map(n => {
-    return `<span class="player-tag" id="ptag-${n}">${n}</span>`;
-  }).join("");
-  names.forEach(n => playerTags[n] = document.getElementById("ptag-" + n));
+  playerCount = names.length;
+  document.getElementById("playerCount").textContent = playerCount;
 }
 
 function renderBoard(board) {
@@ -243,10 +239,9 @@ function onRoundStart(msg) {
   document.getElementById("resultsContainer").innerHTML = "";
   document.getElementById("startBtn").style.display = "none";
 
-  // Reset player tag styles
-  Object.values(playerTags).forEach(el => {
-    if (el) { el.className = "player-tag"; }
-  });
+  // Reset warnings for new round
+  warningNames.clear();
+  document.getElementById("playerWarnings").textContent = "";
 
   startTimer(msg.time_seconds);
 }
@@ -281,16 +276,12 @@ function stopTimer() {
 function onPlayerSubmitted(msg) {
   document.getElementById("submissionCount").textContent =
     `Enviados: ${msg.count} / ${msg.total}`;
-  const tag = playerTags[msg.name];
-  if (tag) tag.classList.add("submitted");
 }
 
 function onTabWarning(msg) {
-  const tag = playerTags[msg.name];
-  if (tag) {
-    tag.classList.add("warning");
-    tag.title = `Cambios de pantalla: ${msg.count}`;
-  }
+  warningNames.add(msg.name);
+  document.getElementById("playerWarnings").textContent =
+    `\u26A0 ${warningNames.size} con cambio de pantalla`;
 }
 
 function onRoundResults(msg) {
@@ -328,10 +319,13 @@ function onRoundResults(msg) {
   renderBoard(msg.board);
 
   // Show next round button
-  const btn = document.getElementById("startBtn");
-  btn.style.display = "inline-block";
-  btn.disabled = false;
-  btn.textContent = `Iniciar Ronda ${msg.round + 1}`;
+  // Only show next round button if not the last round
+  if (!msg.is_last_round) {
+    const btn = document.getElementById("startBtn");
+    btn.style.display = "inline-block";
+    btn.disabled = false;
+    btn.textContent = `Iniciar Ronda ${msg.round + 1}`;
+  }
 }
 </script>
 </body>

@@ -18,7 +18,7 @@ def build_results_dataframe(players, master_scores, total_rounds):
 
     rows = []
     for i, player in enumerate(sorted_players):
-        row = {'Player': f'Player {i + 1}'}
+        row = {'Player': player.name}
         for r in range(total_rounds):
             score = player.round_scores[r] if r < len(player.round_scores) else 0
             row[f'Round {r + 1}'] = score

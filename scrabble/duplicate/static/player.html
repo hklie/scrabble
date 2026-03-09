@@ -283,17 +283,29 @@ function goFullscreen() {
 }
 
 // Anti-cheat: detect tab/app switches
-// Grace period to avoid false positives from fullscreen transitions, notifications, etc.
+// Only flag if the player is away for more than 5 seconds (ignores notifications, status bar, etc.)
 let tabLeaveGrace = false;
+let hiddenAt = null;
+const TAB_LEAVE_THRESHOLD_MS = 5000;
+
 function setTabLeaveGrace() {
   tabLeaveGrace = true;
   setTimeout(() => { tabLeaveGrace = false; }, 2000);
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && roundActive && !tabLeaveGrace && !submitted
-      && ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({cmd: "tab_leave"}));
+  if (document.hidden) {
+    hiddenAt = Date.now();
+  } else {
+    // Tab became visible again — check how long it was hidden
+    if (hiddenAt && roundActive && !tabLeaveGrace && !submitted
+        && ws && ws.readyState === WebSocket.OPEN) {
+      const away = Date.now() - hiddenAt;
+      if (away >= TAB_LEAVE_THRESHOLD_MS) {
+        ws.send(JSON.stringify({cmd: "tab_leave", away_seconds: Math.round(away / 1000)}));
+      }
+    }
+    hiddenAt = null;
   }
 });
 

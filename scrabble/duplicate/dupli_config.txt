@@ -5,7 +5,7 @@
 # title = CAMPEONATO MUNDIAL DE DUPLICADA - Partida 1
 
 # Number of rounds (0 = unlimited, play until bag depleted)
-rounds = 0
+rounds = 1
 
 # Rack constraints: (min_vowels_and_consonants, until_round)
 # After the last specified round, constraint drops to 0.

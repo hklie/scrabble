@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.join(_here, '..', '..'))     # project root
 
 from scrabble.duplicate.dupli_config import parse_config, get_constraint_for_round
 from scrabble.duplicate.engine import GameState, validate_play
+from scrabble.duplicate.players import Player
 from scrabble.analyze_board import to_display
 from autoplay_scrabble import VOWELS
 
@@ -53,6 +54,9 @@ round_active = False
 round_timer_task = None
 round_submissions: dict[str, dict] = {}         # name -> {play, timestamp}
 round_tab_flags: dict[str, list] = {}           # name -> list of leave timestamps
+
+# Cumulative player tracking for export
+player_round_scores: dict[str, list] = {}       # name -> [score_r1, score_r2, ...]
 
 
 def generate_room_code():
@@ -254,17 +258,70 @@ async def ws_player(ws: WebSocket):
             await update_host_players()
 
 
+def do_export():
+    """Export game results to file. Returns filepath or None."""
+    if game.round_num == 0:
+        return None
+    # Build Player objects from tracked scores
+    players = []
+    for name, scores in player_round_scores.items():
+        p = Player(name=name)
+        p.round_scores = list(scores)
+        players.append(p)
+    if not players:
+        return None
+
+    from datetime import datetime
+    output_dir = os.path.join(os.path.dirname(__file__), 'resultados')
+    os.makedirs(output_dir, exist_ok=True)
+
+    fmt = config.output_format if config else 'csv'
+    ext_map = {'csv': 'csv', 'excel': 'xlsx', 'html': 'html', 'graphical': 'png'}
+    ext = ext_map.get(fmt, 'csv')
+
+    # Build filename from title + datetime
+    title_slug = game_title or "duplicado"
+    # Sanitize: keep alphanumeric, spaces to underscores
+    title_slug = "".join(c if c.isalnum() or c in ' -_' else '' for c in title_slug)
+    title_slug = title_slug.strip().replace(' ', '_')[:60]
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+    filepath = os.path.join(output_dir, f'{title_slug}_{timestamp}.{ext}')
+
+    from scrabble.duplicate.export import (
+        export_csv, export_excel, export_html, export_graphical
+    )
+    exporters = {'csv': export_csv, 'excel': export_excel,
+                 'html': export_html, 'graphical': export_graphical}
+    exporter = exporters.get(fmt, export_csv)
+    exporter(players, game.master_scores, game.round_num, filepath)
+    print(f"  Resultados exportados: {filepath}")
+    return filepath
+
+
 # ── Game logic ────────────────────────────────────────────────────────────────
 
 async def start_round():
     global round_active, round_timer_task
 
     async with game_lock:
+        # Check round limit
+        max_rounds = config.rounds if config.rounds > 0 else 0
+        if max_rounds > 0 and game.round_num >= max_rounds:
+            filepath = do_export()
+            await send_to_host({"type": "game_over",
+                                "reason": f"Se completaron las {max_rounds} rondas.",
+                                "export": filepath})
+            await broadcast_to_players({"type": "game_over"})
+            return
+
         round_num = game.round_num + 1
         k = get_constraint_for_round(config, round_num)
 
         if not game.start_round(k, k):
-            await send_to_host({"type": "game_over", "reason": "Not enough tiles."})
+            filepath = do_export()
+            await send_to_host({"type": "game_over",
+                                "reason": "No hay fichas suficientes.",
+                                "export": filepath})
             await broadcast_to_players({"type": "game_over"})
             return
 
@@ -299,7 +356,10 @@ async def start_round():
 
         if move_count == 0:
             round_active = False
-            await send_to_host({"type": "game_over", "reason": "No valid moves."})
+            filepath = do_export()
+            await send_to_host({"type": "game_over",
+                                "reason": "No hay jugadas validas.",
+                                "export": filepath})
             await broadcast_to_players({"type": "game_over"})
             return
 
@@ -360,13 +420,13 @@ async def evaluate_round():
             master_score = game.best_move.score
         game.apply_master_move()
 
-        # Build leaderboard (cumulative). We track scores in a simple dict.
-        # We'll use the round_submissions history approach — store on game object.
+        # Track per-round scores for leaderboard and export
         if not hasattr(game, '_player_scores'):
             game._player_scores = {}
         for pr in player_results:
             game._player_scores.setdefault(pr["name"], 0)
             game._player_scores[pr["name"]] += pr["score"]
+            player_round_scores.setdefault(pr["name"], []).append(pr["score"])
 
         master_total = sum(game.master_scores)
         leaderboard = sorted(
@@ -375,6 +435,10 @@ async def evaluate_round():
              for n, s in game._player_scores.items()],
             key=lambda x: x["total"], reverse=True,
         )
+
+        # Check if this was the last round
+        max_rounds = config.rounds if config.rounds > 0 else 0
+        is_last_round = (max_rounds > 0 and game.round_num >= max_rounds)
 
         results = {
             "type": "round_results",
@@ -385,6 +449,7 @@ async def evaluate_round():
             "player_results": player_results,
             "leaderboard": leaderboard,
             "board": board_to_json(game.board),
+            "is_last_round": is_last_round,
         }
 
         await send_to_host(results)
@@ -399,6 +464,13 @@ async def evaluate_round():
                     await ws.send_text(json.dumps(personal))
                 except Exception:
                     pass
+
+        # If last round, export and send game_over
+        if is_last_round:
+            do_export()
+            await send_to_host({"type": "game_over",
+                                "reason": f"Se completaron las {max_rounds} rondas."})
+            await broadcast_to_players({"type": "game_over"})
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
