@@ -15,6 +15,7 @@ class DupliConfig:
     constraints: list = field(default_factory=list)  # list[ConstraintRule]
     time_seconds: int = 180
     output_format: str = 'csv'
+    title: str = ''
 
 
 def parse_config(filepath):
@@ -66,6 +67,9 @@ def parse_config(filepath):
 
             elif key == 'output':
                 config.output_format = value.lower()
+
+            elif key == 'title':
+                config.title = value
 
     return config
 

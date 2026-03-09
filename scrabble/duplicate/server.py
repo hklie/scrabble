@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.join(_here, '..', '..'))     # project root
 from scrabble.duplicate.dupli_config import parse_config, get_constraint_for_round
 from scrabble.duplicate.engine import GameState, validate_play
 from scrabble.analyze_board import to_display
+from autoplay_scrabble import VOWELS
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
 
@@ -198,11 +199,13 @@ async def ws_player(ws: WebSocket):
                     }))
                     continue
 
-                if proposed_name in player_connections:
-                    await ws.send_text(json.dumps({
-                        "type": "error", "msg": "Name already taken."
-                    }))
-                    continue
+                # If same name reconnects, replace old socket
+                old_ws = player_connections.get(proposed_name)
+                if old_ws and old_ws != ws:
+                    try:
+                        await old_ws.close()
+                    except Exception:
+                        pass
 
                 name = proposed_name
                 player_connections[name] = ws
@@ -273,11 +276,18 @@ async def start_round():
         rack = rack_to_json(game.rack)
         move_count = len(game.moves_df)
 
+        bag_vowels = sum(1 for t in game.bag if t in VOWELS)
+        bag_consonants = sum(1 for t in game.bag if t not in VOWELS and t != '?')
+        bag_blanks = sum(1 for t in game.bag if t == '?')
+
         round_data = {
             "type": "round_start",
             "round": game.round_num,
             "total_rounds": config.rounds if config.rounds > 0 else 0,
             "bag_size": len(game.bag),
+            "bag_vowels": bag_vowels,
+            "bag_consonants": bag_consonants,
+            "bag_blanks": bag_blanks,
             "board": board,
             "rack": rack,
             "move_count": move_count,
@@ -408,13 +418,15 @@ def main():
     game = GameState(seed=args.seed)
     room_code = generate_room_code()
 
-    # Custom title: if arg is a file path, read its first line; otherwise use as text
+    # Title priority: --title flag > config file > default
     if args.title:
         if os.path.isfile(args.title):
             with open(args.title, 'r', encoding='utf-8') as f:
                 game_title = f.readline().strip()
         else:
             game_title = args.title
+    elif config.title:
+        game_title = config.title
 
     display_title = game_title or "Scrabble Duplicado"
     print(f"\n  {display_title} — Servidor Web")

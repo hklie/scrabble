@@ -1,6 +1,9 @@
 # Duplicate Scrabble Configuration
 # Lines starting with # are comments. Blank lines ignored.
 
+# Game title (optional, defaults to "Scrabble Duplicado")
+# title = CAMPEONATO MUNDIAL DE DUPLICADA - Partida 1
+
 # Number of rounds (0 = unlimited, play until bag depleted)
 rounds = 0
 
@@ -9,7 +12,7 @@ rounds = 0
 constraints = (2,15),(1,30)
 
 # Time per play in M:SS format
-time = 2:30
+time = 1:30
 
 # Output format: csv, excel, html, or graphical
 output = csv

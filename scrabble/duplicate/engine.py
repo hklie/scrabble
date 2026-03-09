@@ -70,7 +70,14 @@ def draw_tiles_constrained(bag, rack, min_vowels, min_consonants):
     for i in sorted(drawn, reverse=True):
         bag.pop(i)
 
-    return rack + drawn_tiles
+    final_rack = rack + drawn_tiles
+    # Verify constraint is met (blanks count toward either)
+    v, c, b = count_rack_composition(final_rack)
+    if v + b < min_vowels or c + b < min_consonants:
+        print(f"  WARNING: rack constraint not met! rack={final_rack} "
+              f"v={v} c={c} b={b} min_v={min_vowels} min_c={min_consonants}")
+
+    return final_rack
 
 
 def generate_all_moves(board, rack, trie):
@@ -256,10 +263,23 @@ class GameState:
         return True
 
     def apply_master_move(self):
-        """Place the best move on the board and track the master score."""
+        """Place the best move on the board and track the master score.
+
+        In Duplicate, only the tiles used by the master move are consumed.
+        Unused rack tiles are returned to the bag.
+        """
         if self.best_move is None:
             self.master_scores.append(0)
+            # No move — return all rack tiles to bag
+            self.bag.extend(self.rack)
+            self.rack = []
             return
 
         tiles_used = apply_move(self.board, self.best_move)
         self.master_scores.append(self.best_move.score)
+
+        # Return unused rack tiles to bag
+        leftover = remove_from_rack(self.rack, tiles_used)
+        self.bag.extend(leftover)
+        random.shuffle(self.bag)
+        self.rack = []

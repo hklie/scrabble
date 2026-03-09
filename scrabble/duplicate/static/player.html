@@ -180,18 +180,55 @@ function joinGame() {
   if (!name) { errEl.textContent = "Ingresa tu nombre."; return; }
   errEl.textContent = "";
 
+  connectWebSocket(code, name);
+}
+
+let joinCode = "";
+let joinName = "";
+let reconnecting = false;
+
+function connectWebSocket(code, name) {
+  joinCode = code;
+  joinName = name;
+
   ws = new WebSocket(`ws://${location.host}/ws/player`);
   ws.onopen = () => {
-    ws.send(JSON.stringify({cmd: "join", code: code, name: name}));
+    ws.send(JSON.stringify({cmd: "join", code: joinCode, name: joinName}));
+    if (reconnecting) {
+      reconnecting = false;
+      document.getElementById("statusMsg").textContent = "Reconectado!";
+      document.getElementById("statusMsg").className = "status-msg success";
+      setTimeout(() => {
+        if (document.getElementById("statusMsg").textContent === "Reconectado!") {
+          document.getElementById("statusMsg").textContent = "";
+        }
+      }, 2000);
+    }
   };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     handleMessage(msg);
   };
   ws.onclose = () => {
-    errEl.textContent = "Desconectado del servidor.";
+    // Auto-reconnect if already joined
+    if (playerName) {
+      reconnecting = true;
+      setTimeout(() => connectWebSocket(joinCode, joinName), 1500);
+    } else {
+      document.getElementById("joinError").textContent = "Desconectado del servidor.";
+    }
+  };
+  ws.onerror = () => {
+    // onclose will fire after this, triggering reconnect
   };
 }
+
+// Keepalive ping every 15 seconds to detect dead connections
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({cmd: "ping"}));
+  }
+}, 15000);
 
 function handleMessage(msg) {
   if (msg.type === "error") {
@@ -238,6 +275,7 @@ function handleMessage(msg) {
 }
 
 function goFullscreen() {
+  setTabLeaveGrace();
   const el = document.documentElement;
   if (el.requestFullscreen) el.requestFullscreen();
   else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -245,11 +283,23 @@ function goFullscreen() {
 }
 
 // Anti-cheat: detect tab/app switches
+// Grace period to avoid false positives from fullscreen transitions, notifications, etc.
+let tabLeaveGrace = false;
+function setTabLeaveGrace() {
+  tabLeaveGrace = true;
+  setTimeout(() => { tabLeaveGrace = false; }, 2000);
+}
+
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && roundActive && ws && ws.readyState === WebSocket.OPEN) {
+  if (document.hidden && roundActive && !tabLeaveGrace && !submitted
+      && ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({cmd: "tab_leave"}));
   }
 });
+
+// Fullscreen changes can trigger visibilitychange — suppress during transitions
+document.addEventListener("fullscreenchange", setTabLeaveGrace);
+document.addEventListener("webkitfullscreenchange", setTabLeaveGrace);
 
 function onRoundStart(msg) {
   roundActive = true;
@@ -257,7 +307,7 @@ function onRoundStart(msg) {
 
   const totalLabel = msg.total_rounds > 0 ? ` / ${msg.total_rounds}` : "";
   document.getElementById("roundInfo").textContent =
-    `Ronda ${msg.round}${totalLabel}  |  Bolsa: ${msg.bag_size}`;
+    `Ronda ${msg.round}${totalLabel}  |  Bolsa: ${msg.bag_size} (V:${msg.bag_vowels} C:${msg.bag_consonants} ?:${msg.bag_blanks})`;
 
   // Rack (blanks shown as ? with distinct style)
   document.getElementById("rackContainer").innerHTML = msg.rack.map(t => {
