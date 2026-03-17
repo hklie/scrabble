@@ -1,0 +1,16 @@
+# Core dependencies
+numpy<2                     # Array operations (must stay <2 for torchvision/scikit-image)
+pandas                      # DataFrames for move tables and exports
+opencv-python               # Image processing and OCR preprocessing
+easyocr                     # Spanish optical character recognition
+regex                       # Advanced regex patterns (chains.py)
+Pillow                      # Board image rendering
+
+# Export formats
+openpyxl                    # Excel export (.xlsx)
+matplotlib                  # Graphical score progression charts
+
+# Duplicate Scrabble web server
+fastapi                     # HTTP + WebSocket server
+uvicorn                     # ASGI server
+websockets                  # WebSocket protocol support
