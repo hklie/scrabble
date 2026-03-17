@@ -1,6 +1,10 @@
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 from collections import Counter
 
-from generator import tokenize_word, detokenize_word
+from preprocessing import tokenize_word, detokenize_word
 from config import SCRABBLE_TILES, SCRABBLE_POINTS, RANKED_SCRABBLE_WORDS, CLEAN_NO_VERBS_FILE, DIGRAPHS, DIGRAPH_MAP
 
 # === HELPERS ===

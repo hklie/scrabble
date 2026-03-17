@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from config import CLEAN_NO_VERBS_FILE
 from preprocessing import tokenize_word, detokenize_word
 

@@ -9,6 +9,8 @@ Output: Data/synergy.csv with columns: combination, length, synergy (0-100)
 
 import csv
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from collections import Counter
 from itertools import combinations_with_replacement
 

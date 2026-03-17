@@ -37,26 +37,47 @@ scrabble/
 │   ├── config.py                  # Central configuration (paths, constants, patterns)
 │   ├── preprocessing.py           # Digraph tokenization/detokenization
 │   ├── analyze_board.py           # Board image OCR + best move finder
-│   ├── clean_no_verbs.py          # Lexicon cleaning and deduplication
-│   ├── probability.py             # Probabilistic word ranking
-│   ├── study_list.py              # Tiered study list generation
-│   ├── generator.py               # Interactive word generator from letter constraints
-│   ├── nouns_csv.py               # Comprehensive word analysis CSV export
-│   ├── verbs_csv.py               # Verb classification CSV export
-│   ├── endings.py                 # Filter words by ending letter
-│   ├── prefixes.py                # Filter words by prefix pattern
-│   ├── suffixes.py                # Filter words by suffix pattern
-│   ├── ocurrences.py              # Filter words by internal letter patterns
-│   ├── filter_by_tiers.py         # Filter words by consonant difficulty tiers
-│   ├── unique_anagrams.py         # Find words with no anagrams in the lexicon
-│   ├── endings_with_useful_plurals.py  # Targeted length+ending combinations
-│   ├── chains.py                  # Word transformation chain builder
-│   └── synergy.py                 # Rack leave synergy value computation
+│   ├── autoplay_scrabble.py       # Solitaire autoplay engine + board image renderer
+│   │
+│   ├── study/                     # Word list generation & analysis tools
+│   │   ├── clean_no_verbs.py      # Lexicon cleaning and deduplication
+│   │   ├── probability.py         # Probabilistic word ranking
+│   │   ├── study_list.py          # Tiered study list generation
+│   │   ├── generator.py           # Interactive word generator from letter constraints
+│   │   ├── nouns_csv.py           # Comprehensive word analysis CSV export
+│   │   ├── verbs_csv.py           # Verb classification CSV export
+│   │   ├── endings.py             # Filter words by ending letter
+│   │   ├── prefixes.py            # Filter words by prefix pattern
+│   │   ├── suffixes.py            # Filter words by suffix pattern
+│   │   ├── ocurrences.py          # Filter words by internal letter patterns
+│   │   ├── filter_by_tiers.py     # Filter words by consonant difficulty tiers
+│   │   ├── unique_anagrams.py     # Find words with no anagrams in the lexicon
+│   │   ├── endings_with_useful_plurals.py  # Targeted length+ending combinations
+│   │   ├── chains.py              # Word transformation chain builder
+│   │   └── synergy.py             # Rack leave synergy value computation
+│   │
+│   └── duplicate/                 # Duplicate Scrabble game (CLI + web)
+│       ├── dupli_config.py        # Game configuration parser
+│       ├── dupli_config.txt       # Example configuration file
+│       ├── engine.py              # Core game engine (rack draw, move gen, scoring)
+│       ├── server.py              # FastAPI + WebSocket web server
+│       ├── main.py                # CLI entry point
+│       ├── players.py             # Player registry and scoring
+│       ├── ui.py                  # Terminal UI
+│       ├── export.py              # CSV/Excel/HTML/PNG result export
+│       ├── static/                # Web assets (host.html, player.html)
+│       └── resultados/            # Game results output directory
 │
+├── requirements.txt               # Python dependencies
 └── README.md
 ```
 
 ## Dependencies
+
+Install all dependencies with:
+```bash
+pip install -r requirements.txt
+```
 
 ### External
 
@@ -65,7 +86,16 @@ scrabble/
 | `numpy` | `nouns_csv.py`, `analyze_board.py` | Percentile calculations; image array operations |
 | `opencv-python` | `analyze_board.py` | Image processing, thresholding, cell extraction |
 | `easyocr` | `analyze_board.py` | Optical character recognition (Spanish model) |
-| `regex` | `chains.py` | Advanced regex support (imported but lightly used) |
+| `regex` | `chains.py` | Advanced regex support |
+| `Pillow` | `autoplay_scrabble.py` | Board image rendering |
+| `pandas` | `duplicate/engine.py`, `duplicate/export.py` | Move DataFrames and result export |
+| `openpyxl` | `duplicate/export.py` | Excel export (.xlsx) |
+| `matplotlib` | `duplicate/export.py` | Graphical score progression charts |
+| `fastapi` | `duplicate/server.py` | HTTP + WebSocket server |
+| `uvicorn` | `duplicate/server.py` | ASGI server |
+| `websockets` | `duplicate/server.py` | WebSocket protocol support |
+
+**Note:** `numpy` must stay <2 for torchvision/scikit-image compatibility.
 
 ### Internal
 
@@ -73,8 +103,6 @@ All modules depend on:
 
 - **`config.py`** -- file paths, Scrabble tile/point data, digraph mappings, pattern definitions, tier groupings, premium square map, board analysis constants.
 - **`preprocessing.py`** -- `tokenize_word()` and `detokenize_word()` for digraph-aware text handling.
-
-`probability.py` additionally imports from `generator.py` (for its `tokenize_word` and `detokenize_word`, though it redefines `tokenize_word` locally).
 
 ## Digraph Encoding
 
@@ -97,7 +125,7 @@ Spanish Scrabble treats `ch`, `ll`, and `rr` as single tiles. The raw lexicon fi
                          │  (latin-1)        │
                          └────────┬─────────┘
                                   │
-                         clean_no_verbs.py
+                         study/clean_no_verbs.py
                          (decode digraphs, remove
                           digits, deduplicate, sort)
                                   │
@@ -110,7 +138,7 @@ Spanish Scrabble treats `ch`, `ll`, and `rr` as single tiles. The raw lexicon fi
           ┌────────────┬───────────┼───────────┬────────────┬───────────┬───────────┐
           │            │           │           │            │           │           │
           ▼            ▼           ▼           ▼            ▼           ▼           ▼
-    probability.py  study_list.py  nouns_csv.py  Pattern    Anagram   chains.py  synergy.py
+  probability.py  study_list.py  nouns_csv.py  Pattern    Anagram   chains.py  synergy.py
                                                Filters    Analysis
           │            │           │           │            │           │           │
           ▼            ▼           ▼           │            ▼           ▼           ▼
@@ -133,7 +161,7 @@ Spanish Scrabble treats `ch`, `ll`, and `rr` as single tiles. The raw lexicon fi
              │                              │
              └──────────┬───────────────────┘
                         │
-                   verbs_csv.py
+               study/verbs_csv.py
                         │
                         ▼
                     verbs.csv
@@ -231,7 +259,7 @@ python scrabble/analyze_board.py boards/Board4.jpg --rack "?NOETOY"
 
 **Input:** Board/rack images (JPG) + `LexiconFISE2.TXT` | **Output:** Ranked list of legal moves with scores
 
-### clean_no_verbs.py
+### study/clean_no_verbs.py
 
 Prepares the primary input file for all downstream analyses.
 
@@ -241,7 +269,7 @@ Prepares the primary input file for all downstream analyses.
 
 **Input:** `No_verbos.txt` | **Output:** `No_verbos_filtrados.txt`
 
-### probability.py
+### study/probability.py
 
 Ranks words by a combined probability score derived from natural letter frequency and Scrabble tile availability.
 
@@ -257,7 +285,7 @@ Ranks words by a combined probability score derived from natural letter frequenc
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `Ranked_Scrabble_Suggestions.txt`
 
-### study_list.py
+### study/study_list.py
 
 Generates a tiered study list with metadata about prefixes, suffixes, and root-word relationships.
 
@@ -274,7 +302,7 @@ Generates a tiered study list with metadata about prefixes, suffixes, and root-w
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `Optimized_Study_List.txt`
 
-### generator.py
+### study/generator.py
 
 Interactive tool that generates a filtered word list from user-supplied letter constraints.
 
@@ -289,7 +317,7 @@ Interactive tool that generates a filtered word list from user-supplied letter c
 
 **Input:** `No_verbos_filtrados.txt` + interactive user input | **Output:** `<most_probable_word>.txt`
 
-### nouns_csv.py
+### study/nouns_csv.py
 
 Generates a comprehensive CSV with 20+ metadata columns per word, including percentile rankings.
 
@@ -311,7 +339,7 @@ Generates a comprehensive CSV with 20+ metadata columns per word, including perc
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `word_analysis.csv`
 
-### verbs_csv.py
+### study/verbs_csv.py
 
 Exports verb metadata including conjugation type classification.
 
@@ -328,7 +356,7 @@ Exports verb metadata including conjugation type classification.
 
 **Input:** `Verbos.txt` + `Verbos_clasificados.TXT` | **Output:** `verbs.csv`
 
-### endings.py
+### study/endings.py
 
 Groups words by their final token.
 
@@ -338,7 +366,7 @@ Groups words by their final token.
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `ends_with_<letter>.txt` (up to 21 files)
 
-### prefixes.py
+### study/prefixes.py
 
 Filters words by prefix patterns using a pattern language where `V` = vowel, `C` = consonant, and literals match exactly.
 
@@ -350,7 +378,7 @@ Filters words by prefix patterns using a pattern language where `V` = vowel, `C`
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `prefix_<pattern>.txt` (15+ files)
 
-### suffixes.py
+### study/suffixes.py
 
 Filters words by suffix patterns with special vowel-variant grouping.
 
@@ -362,7 +390,7 @@ Filters words by suffix patterns with special vowel-variant grouping.
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `suffix_<pattern>.txt` (40+ files)
 
-### ocurrences.py
+### study/ocurrences.py
 
 Finds words containing specific internal letter patterns (e.g., `Vh`, `tl`, `VVV`).
 
@@ -373,7 +401,7 @@ Finds words containing specific internal letter patterns (e.g., `Vh`, `tl`, `VVV
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `pattern_<name>.txt` (6 files)
 
-### filter_by_tiers.py
+### study/filter_by_tiers.py
 
 Filters words by consonant difficulty tiers. Tier 1 words use only the most common consonants; higher tiers progressively include rarer ones.
 
@@ -389,7 +417,7 @@ Filters words by consonant difficulty tiers. Tier 1 words use only the most comm
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `words_only_TIER_<name>_<min>_<max>.txt` (4 files)
 
-### unique_anagrams.py
+### study/unique_anagrams.py
 
 Identifies words that have no anagrams within the lexicon (singleton anagram classes).
 
@@ -399,7 +427,7 @@ Identifies words that have no anagrams within the lexicon (singleton anagram cla
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `singleton_anagrams_<min>_<max>.txt`
 
-### endings_with_useful_plurals.py
+### study/endings_with_useful_plurals.py
 
 Targeted filter for specific length-and-ending combinations useful for plural/conjugation study.
 
@@ -409,7 +437,7 @@ Targeted filter for specific length-and-ending combinations useful for plural/co
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `five_token_ending_<letter>.txt`, `six_token_ending_<letter>.txt`
 
-### chains.py
+### study/chains.py
 
 Builds word transformation chains where consecutive words differ by exactly one token (Hamming distance = 1). Designed for flashcard-style learning progressions.
 
@@ -424,7 +452,7 @@ Builds word transformation chains where consecutive words differ by exactly one 
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `chains_study_list.txt`
 
-### synergy.py
+### study/synergy.py
 
 Computes synergy scores for Scrabble rack leaves — the letter combinations remaining after playing a word. High-synergy leaves co-occur frequently in valid words. Uses an inverted index for fast submultiset matching against the corpus.
 
@@ -473,25 +501,76 @@ The board analyzer automatically detects tiles using grayscale analysis with sub
 
 ```bash
 # Step 1: Prepare the clean lexicon (required before all other scripts)
-python scrabble/clean_no_verbs.py
+python scrabble/study/clean_no_verbs.py
 
 # Step 2: Run any analysis module independently
-python scrabble/probability.py          # Ranked word suggestions
-python scrabble/study_list.py           # Tiered study list
-python scrabble/nouns_csv.py            # Full word analysis CSV
-python scrabble/verbs_csv.py            # Verb classification CSV
-python scrabble/generator.py            # Interactive word generator
-python scrabble/chains.py              # Transformation chains
-python scrabble/synergy.py             # Rack leave synergy values
+python scrabble/study/probability.py          # Ranked word suggestions
+python scrabble/study/study_list.py           # Tiered study list
+python scrabble/study/nouns_csv.py            # Full word analysis CSV
+python scrabble/study/verbs_csv.py            # Verb classification CSV
+python scrabble/study/generator.py            # Interactive word generator
+python scrabble/study/chains.py              # Transformation chains
+python scrabble/study/synergy.py             # Rack leave synergy values
 
 # Step 3: Run any filter module (most prompt for min/max token length)
-python scrabble/endings.py
-python scrabble/prefixes.py
-python scrabble/suffixes.py
-python scrabble/ocurrences.py
-python scrabble/filter_by_tiers.py
-python scrabble/unique_anagrams.py
-python scrabble/endings_with_useful_plurals.py
+python scrabble/study/endings.py
+python scrabble/study/prefixes.py
+python scrabble/study/suffixes.py
+python scrabble/study/ocurrences.py
+python scrabble/study/filter_by_tiers.py
+python scrabble/study/unique_anagrams.py
+python scrabble/study/endings_with_useful_plurals.py
 ```
 
 Most filter scripts prompt interactively for minimum and maximum token length.
+
+### Duplicate Scrabble
+
+Multiplayer Duplicate Scrabble game where all players get the same rack and compete to find the best play.
+
+**Web server mode** (players join via phone):
+
+```bash
+# Basic usage
+python scrabble/duplicate/server.py scrabble/duplicate/dupli_config.txt
+
+# With custom title and seed
+python scrabble/duplicate/server.py scrabble/duplicate/dupli_config.txt \
+    --title "CAMPEONATO MUNDIAL DE DUPLICADA - Partida 1" --seed 42
+
+# Custom port
+python scrabble/duplicate/server.py scrabble/duplicate/dupli_config.txt --port 9000
+```
+
+Host opens `http://localhost:8000/host` on a laptop/projector. Players join via `http://<host-ip>:8000/play` on their phones, enter the 4-digit room code, and submit plays as `WORD POSITION` (e.g., `CORTES H8`). Lowercase letters indicate blanks (e.g., `CORTEs H8` — the S is a blank).
+
+**CLI mode** (terminal-based, moderator enters plays):
+
+```bash
+python scrabble/duplicate/main.py scrabble/duplicate/dupli_config.txt
+```
+
+**Configuration** (`dupli_config.txt`):
+
+```
+title = CAMPEONATO MUNDIAL DE DUPLICADA - Partida 1
+rounds = 15
+constraints = (2,15),(1,30)
+time = 3:00
+output = csv
+```
+
+- `rounds` — Number of rounds (0 = unlimited, play until bag depleted)
+- `constraints` — `(min_vowels_and_consonants, until_round)` pairs
+- `time` — Countdown per round in M:SS format
+- `output` — Export format: csv, excel, html, or graphical
+
+Results are exported to `scrabble/duplicate/resultados/` when the game ends.
+
+### Solitaire Autoplay
+
+Simulates a full solitaire Scrabble game, playing the best move each round:
+
+```bash
+python scrabble/autoplay_scrabble.py --seed 42 --rounds 0 --image
+```

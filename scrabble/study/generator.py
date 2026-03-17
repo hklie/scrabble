@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from collections import defaultdict, Counter
 
 # Assumes these are in a 'config.py' file and are imported by 'preprocessing.py'

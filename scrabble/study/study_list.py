@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 from collections import defaultdict, Counter
 
 from config import CLEAN_NO_VERBS_FILE, OUTPUT_STUDY_LIST, RARE_LETTERS, SUFFIXES, PREFIXES, SCRABBLE_POINTS

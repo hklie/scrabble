@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import regex  # pip install regex
 from collections import defaultdict, deque
 from preprocessing import tokenize_word, decode_digraphs
