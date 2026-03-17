@@ -20,6 +20,7 @@ scrabble/
 │   ├── verbs.csv                  # [generated] Verb metadata CSV
 │   ├── chains_study_list.txt      # [generated] Transformation chains
 │   ├── synergy.csv                # [generated] Rack leave synergy values
+│   ├── progress.json              # [generated] SRS quiz progress (per-word review state)
 │   ├── ends_with_*.txt            # [generated] Words grouped by ending
 │   ├── prefix_*.txt               # [generated] Words grouped by prefix
 │   ├── suffix_*.txt               # [generated] Words grouped by suffix
@@ -39,13 +40,17 @@ scrabble/
 │   ├── analyze_board.py           # Board image OCR + best move finder
 │   ├── autoplay_scrabble.py       # Solitaire autoplay engine + board image renderer
 │   │
-│   ├── study/                     # Word list generation & analysis tools
+│   ├── study/                     # Word list generation, analysis & quiz tools
+│   │   ├── quiz.py                # Interactive SRS quiz (review, anagram, hooks, pattern, morphology)
+│   │   ├── srs.py                 # SM-2 spaced repetition engine + JSON persistence
+│   │   ├── decks.py               # Deck generation, presets, and filters from CSV data
 │   │   ├── clean_no_verbs.py      # Lexicon cleaning and deduplication
 │   │   ├── probability.py         # Probabilistic word ranking
 │   │   ├── study_list.py          # Tiered study list generation
 │   │   ├── generator.py           # Interactive word generator from letter constraints
-│   │   ├── nouns_csv.py           # Comprehensive word analysis CSV export
+│   │   ├── nouns_csv.py           # Comprehensive word analysis CSV export (28 hook columns)
 │   │   ├── verbs_csv.py           # Verb classification CSV export
+│   │   ├── vowel_patterns.py      # 7-letter word vowel/consonant pattern filters
 │   │   ├── endings.py             # Filter words by ending letter
 │   │   ├── prefixes.py            # Filter words by prefix pattern
 │   │   ├── suffixes.py            # Filter words by suffix pattern
@@ -329,13 +334,13 @@ Generates a comprehensive CSV with 20+ metadata columns per word, including perc
 | `match_prefix` | `(word) -> str` | Matches against `EXTENSIVE_PREFIXES`, supports `V`/`C` wildcards |
 | `match_suffix` | `(word) -> str` | Matches against `EXTENSIVE_SUFIXES`, handles `V`-terminated and `CC`/`VV` patterns |
 | `match_pattern` | `(word) -> str` | Finds occurrence patterns (`Vh`, `tl`, `VVV`, etc.) |
-| `get_hooks` | `(word, word_set, chars) -> dict` | Tests prefix hooks: whether prepending each character forms a valid word |
-| `get_suffix_hooks` | `(word, word_set, chars) -> dict` | Tests suffix hooks: whether appending each character forms a valid word |
+| `get_hooks` | `(word, word_set, chars) -> dict` | Tests prefix hooks for all 28 tile types: whether prepending each character forms a valid word |
+| `get_suffix_hooks` | `(word, word_set, chars) -> dict` | Tests suffix hooks for all 28 tile types: whether appending each character forms a valid word |
 | `sorted_letters` | `(word) -> str` | Alphabetically sorted characters (anagram key) |
 | `count_anagrams` | `(word, anagram_dict) -> int` | Counts anagram siblings in the lexicon |
-| `main` | `()` | Full pipeline: loads words, computes all per-word metadata (length, prefix, suffix, pattern, hooks for `aeioulnrst`, anagram count, probability, scrabble value), calculates percentile buckets (P10/P25/P50/P75/P90/Top10), writes CSV |
+| `main` | `()` | Full pipeline: loads words, computes all per-word metadata (length, prefix, suffix, pattern, hooks for all 28 tile types, anagram count, probability, scrabble value), calculates percentile buckets (P10/P25/P50/P75/P90/Top10), writes CSV |
 
-**CSV columns:** `word`, `length`, `prefix`, `suffix`, `probabilityx1000`, `percentile`, `pattern`, `ending`, `value`, `anagrams`, `category`, plus 20 hook columns (`a-hook`, `e-hook`, ..., `hook-a`, `hook-e`, ...).
+**CSV columns:** `word`, `length`, `prefix`, `suffix`, `probabilityx1000`, `percentile`, `pattern`, `ending`, `value`, `anagrams`, `category`, plus 56 hook columns for all 28 tile types (`a-hook`, `b-hook`, ..., `ch-hook`, ..., `hook-a`, `hook-b`, ..., `hook-ch`, ...).
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `word_analysis.csv`
 
@@ -472,6 +477,156 @@ Computes synergy scores for Scrabble rack leaves — the letter combinations rem
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `synergy.csv`
 
+### study/vowel_patterns.py
+
+Categorizes 7-token words by vowel/consonant distribution patterns. Handles accented vowels (`á`, `é`, `í`, `ó`, `ú`, `ü`) as their base vowel equivalents.
+
+**Categories:**
+- 2 vowels (5 consonants)
+- 2 consonants (5 vowels)
+- 3 consonants with at least 2 duplicated
+- 3+ of a single vowel (i, u, or o)
+- Vowels drawn only from {i, o, u}
+
+**Input:** `No_verbos_filtrados.txt` | **Output:** `vowel_pattern_<category>_7.txt` (8 files)
+
+### study/srs.py
+
+SM-2 spaced repetition engine with JSON persistence. Tracks per-word review state and schedules future reviews based on recall quality.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `load_progress` | `(path) -> dict[str, CardState]` | Load `progress.json`, returns word → CardState mapping |
+| `save_progress` | `(cards, path) -> None` | Atomically write progress (write .tmp then rename) |
+| `update_card` | `(state, quality) -> CardState` | Apply SM-2 algorithm: quality 0–5 maps to interval/easiness updates |
+| `get_due_cards` | `(cards, today) -> list[str]` | Words with `next_review <= today`, sorted most overdue first |
+| `get_new_cards` | `(cards, pool, limit) -> list[str]` | Words from pool not yet studied, up to limit |
+| `build_session` | `(cards, pool, session_size) -> list[str]` | Due cards first, then new cards to fill remaining slots |
+
+**SM-2 quality scale:** 0=blackout, 1=wrong, 2=hard, 3=difficult, 4=ok, 5=easy.
+
+**Persistence:** `Data/progress.json` — stores per-word easiness factor, interval, repetition count, next review date, total reviews, and lapse count.
+
+### study/decks.py
+
+Deck generation and filtering from `word_analysis.csv` and `verbs.csv`. Provides preset study decks and group-by helpers for organized study sessions.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `load_word_analysis` | `(path) -> list[dict]` | Load word CSV into card dicts with hooks, probability, morphology (cached) |
+| `load_verbs` | `(path) -> list[dict]` | Load verb CSV into card dicts with type and computed point values (cached) |
+| `filter_cards` | `(cards, **filters) -> list[dict]` | Filter by length, percentile, endings, prefix, suffix, pattern, tier, anagrams, hooks, value |
+| `filter_verbs` | `(verbs, **filters) -> list[dict]` | Filter by length, beginning string, verb type, consonant tier |
+| `apply_preset` | `(cards, name) -> list[dict]` | Apply a named word preset filter |
+| `apply_verb_preset` | `(verbs, name) -> list[dict]` | Apply a named verb preset filter |
+| `group_by_prefix` | `(cards, min_group) -> dict` | Group cards by prefix, sorted by group size |
+| `group_by_suffix` | `(cards, min_group) -> dict` | Group cards by suffix, sorted by group size |
+| `group_by_ending` | `(cards, min_group) -> dict` | Group cards by ending letter/digraph |
+| `group_verbs_by_beginning` | `(verbs, prefix_len, min_group) -> dict` | Group verbs by first N characters |
+| `group_verbs_by_type` | `(verbs) -> dict` | Group verbs by type (transitivo, intransitivo, etc.) |
+
+**Preset decks:**
+
+| Preset | Words | Description |
+|--------|------:|-------------|
+| `words-2` | 81 | 2-letter words |
+| `words-3` | 387 | 3-letter words |
+| `words-4` | 1,966 | 4-letter words |
+| `words-5` | 4,963 | 5-letter words |
+| `7L-2vowels` | 294 | 7-letter words with only 2 vowels |
+| `7L-2cons` | 135 | 7-letter words with only 2 consonants |
+| `high-prob` | 8,828 | High probability words (Top10, 4–8 letters) |
+| `scoring-5` | 788 | 5-letter words with high-scoring letters |
+| `scoring-6` | 1,260 | 6-letter words with high-scoring letters |
+| `5L-end-d` | 16 | 5-letter words ending in D |
+| `5L-end-l` | 322 | 5-letter words ending in L |
+| `5L-end-n` | 388 | 5-letter words ending in N |
+| `5L-end-r` | 214 | 5-letter words ending in R |
+| `5L-end-z` | 71 | 5-letter words ending in Z |
+| `verbs-3` | 5 | 3-letter verbs |
+| `verbs-4` | 44 | 4-letter verbs |
+| `verbs-5` | 484 | 5-letter verbs |
+| `verbs-6` | 1,203 | 6-letter verbs |
+| `verbs-7` | 1,945 | 7-letter verbs |
+| `verbs-8` | 2,600 | 8-letter verbs |
+
+### study/quiz.py
+
+Interactive CLI quiz with 5 quiz modes, spaced repetition scheduling, and organized study decks for both words and verbs.
+
+**Quiz modes:**
+
+| Mode | Description |
+|------|-------------|
+| **Review** | Self-assessment flashcards: show word, reveal hooks/morphology/anagrams, rate 0–5 |
+| **Anagram** | Scrambled letters displayed, type the word (2 attempts, then reveal) |
+| **Hooks** | Given a word, name the letters that can hook before/after it |
+| **Pattern** | Word with high-value letters blanked out, fill in the full word |
+| **Morphology** | Given a word, identify its prefix and suffix |
+
+**Study organization:**
+
+| Option | Description |
+|--------|-------------|
+| **Preset decks** | 19 presets organized by length, vowel patterns, scoring, endings, and verb length |
+| **Group study** | Study words grouped by shared prefix, suffix, or ending (paginated browser) |
+| **Verb study** | Filter verbs by length, beginning, type, or browse grouped beginnings |
+
+After each card, all modes show full reveal info: front/back hooks, prefix, suffix, ending, verb type, and anagram count.
+
+**CLI usage:**
+
+```bash
+cd scrabble
+
+# Interactive menu (recommended)
+python -m study.quiz
+
+# Direct mode with preset deck
+python -m study.quiz --mode anagram --deck 7L-2vowels
+python -m study.quiz --mode hooks --deck words-5
+python -m study.quiz --mode pattern --deck verbs-6
+
+# Filter by length, tier, or percentile
+python -m study.quiz --mode review --length 7
+python -m study.quiz --mode anagram --tier 4 --size 30
+
+# Check progress
+python -m study.quiz --stats
+python -m study.quiz --list-decks
+```
+
+**CLI options:**
+
+| Option | Description |
+|--------|-------------|
+| `--mode` | Quiz mode: `review`, `anagram`, `hooks`, `pattern`, `morphology` |
+| `--deck` | Preset deck name (see `--list-decks`) |
+| `--length` | Filter by word length |
+| `--tier` | Filter by consonant tier (1–4) |
+| `--size` | Session size (default: 20) |
+| `--min-percentile` | Minimum probability percentile (default: P25) |
+| `--stats` | Show progress statistics |
+| `--list-decks` | List all available preset decks |
+
+**Interactive menu flow:**
+
+```
+── Scrabble Word Quiz ──
+
+Words studied: 28   Due today: 12
+
+Modes:
+  1. Review    2. Anagram    3. Hooks
+  4. Pattern   5. Morphology
+
+Options:
+  v. Verb study    g. Group study
+  s. Stats         d. List decks     q. Quit
+```
+
+**Input:** `word_analysis.csv`, `verbs.csv` | **Output:** `progress.json` (SRS state)
+
 ## Usage
 
 Each module runs independently as a script.
@@ -497,6 +652,26 @@ python scrabble/analyze_board.py boards/Board5.jpg --rack "AAÑICJM" \
 
 The board analyzer automatically detects tiles using grayscale analysis with subscript digit validation, disambiguates common OCR confusions (N/Ñ, R/RR, L/LL) using tile point values, and auto-detects Z tiles via their unique "10" subscript. Use `--corrections` for tiles that can't be auto-distinguished (e.g., V vs Y — both 4 pts).
 
+### Interactive Quiz (Spaced Repetition)
+
+```bash
+cd scrabble
+
+# Launch interactive menu
+python -m study.quiz
+
+# Direct modes
+python -m study.quiz --mode anagram --deck words-5     # 5-letter anagram drill
+python -m study.quiz --mode hooks --deck 5L-end-l      # Hook quiz for 5L ending in L
+python -m study.quiz --mode pattern --deck verbs-7      # Pattern fill for 7-letter verbs
+python -m study.quiz --mode morphology --length 6       # Prefix/suffix quiz for 6L words
+
+# Progress
+python -m study.quiz --stats
+```
+
+The quiz system uses SM-2 spaced repetition: words you struggle with appear more often, mastered words space out over days/weeks. Progress is saved in `Data/progress.json`.
+
 ### Word Study Tools
 
 ```bash
@@ -506,8 +681,9 @@ python scrabble/study/clean_no_verbs.py
 # Step 2: Run any analysis module independently
 python scrabble/study/probability.py          # Ranked word suggestions
 python scrabble/study/study_list.py           # Tiered study list
-python scrabble/study/nouns_csv.py            # Full word analysis CSV
+python scrabble/study/nouns_csv.py            # Full word analysis CSV (with 28-tile hooks)
 python scrabble/study/verbs_csv.py            # Verb classification CSV
+python scrabble/study/vowel_patterns.py       # 7-letter vowel pattern filters
 python scrabble/study/generator.py            # Interactive word generator
 python scrabble/study/chains.py              # Transformation chains
 python scrabble/study/synergy.py             # Rack leave synergy values

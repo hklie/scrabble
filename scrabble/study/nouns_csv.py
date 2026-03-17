@@ -137,8 +137,9 @@ def main():
             "category": "unknown"
         }
 
-        entry.update(get_hooks(word, word_set, "aeioulnrst"))
-        entry.update(get_suffix_hooks(word, word_set, "aeioulnrst"))
+        hook_tiles = list("abcdefghijlmnopqrstuvxyz") + ["ch", "ll", "rr", "ñ"]
+        entry.update(get_hooks(word, word_set, hook_tiles))
+        entry.update(get_suffix_hooks(word, word_set, hook_tiles))
 
         rows.append(entry)
 
