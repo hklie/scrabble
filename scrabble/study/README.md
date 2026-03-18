@@ -1,6 +1,6 @@
 # Study — Word Study & Quiz System
 
-A complete word study toolkit for Spanish Scrabble: lexicon analysis scripts that generate categorized word lists, plus an interactive spaced-repetition quiz system with 5 quiz modes, 20 preset decks, and SRS scheduling.
+A complete word study toolkit for Spanish Scrabble: lexicon analysis scripts that generate categorized word lists, plus an interactive spaced-repetition quiz system with 8 quiz modes, word lookup, 20 preset decks, and SRS scheduling.
 
 ## Quick Start
 
@@ -17,6 +17,12 @@ python -m study.quiz --mode anagram --deck words-5
 python -m study.quiz --mode hooks --deck 5L-end-l
 python -m study.quiz --mode pattern --deck verbs-7
 python -m study.quiz --mode morphology --length 6
+python -m study.quiz --mode transformation --deck words-4
+python -m study.quiz --mode extension --deck words-3
+
+# Word transformation CLI
+python -m study.transforms CASA              # One-letter changes
+python -m study.transforms --all CASA        # All transformations
 
 # Check progress
 python -m study.quiz --stats
@@ -59,6 +65,9 @@ python scrabble/study/synergy.py
 | **Hooks** | Given a word, name the front and back hook letters (all 28 tile types). Scored by completeness. |
 | **Pattern** | Word with ~40% of letters blanked (high-value letters hidden first). Fill in the full word. |
 | **Morphology** | Given a word, identify its prefix and suffix. |
+| **Transformation** | Given a word with one position blanked, name valid replacement letters that form new words. Scored by completeness. |
+| **Extension** | Given a word with an insertion slot at a random position, name valid letters to insert. Scored by completeness. |
+| **Reduction** | Given a word, identify which letter(s) can be removed to leave a valid word. Scored by completeness. |
 
 All modes show full reveal info after each card: hooks, prefix, suffix, ending, verb type, anagrams, and point value.
 
@@ -106,6 +115,7 @@ All modes show full reveal info after each card: hooks, prefix, suffix, ending, 
 
 ### Study Organization
 
+- **Word lookup** (`c` in menu): Check any word's validity against the FISE2 lexicon. Shows point value, hooks, morphology, and transformation counts (changes, insertions, removals).
 - **Group study** (`g` in menu): Browse and study words grouped by shared prefix, suffix, or ending. Paginated browser for selecting groups.
 - **Verb study** (`v` in menu): Filter verbs by length, beginning, type (transitivo/intransitivo/pronominal/antiguo), or browse beginnings grouped by first N characters.
 - **Custom filter**: Specify length, consonant tier (1–4), ending letter, and minimum percentile.
@@ -125,7 +135,7 @@ Run `python -m study.quiz --stats` to see: total words studied, due today, maste
 
 | Option | Description |
 |--------|-------------|
-| `--mode` | Quiz mode: `review`, `anagram`, `hooks`, `pattern`, `morphology` |
+| `--mode` | Quiz mode: `review`, `anagram`, `hooks`, `pattern`, `morphology`, `transformation`, `extension`, `reduction` |
 | `--deck` | Preset deck name (see `--list-decks`) |
 | `--length` | Filter by word length |
 | `--tier` | Filter by consonant tier (1–4) |
@@ -195,7 +205,8 @@ word_analysis.csv               ▼
 
 | File | Type | Description |
 |------|------|-------------|
-| `quiz.py` | App | Interactive CLI quiz with 5 modes, verb/group study menus |
+| `quiz.py` | App | Interactive CLI quiz with 8 modes, word lookup, verb/group study menus |
+| `transforms.py` | Library + CLI | Word transformations: one-letter change, insert, remove (`python -m study.transforms`) |
 | `srs.py` | Engine | SM-2 spaced repetition algorithm + JSON persistence |
 | `decks.py` | Library | Card loading, filtering, 20 presets, group-by helpers |
 | `nouns_csv.py` | Generator | Full word metadata CSV (probability, hooks, morphology) |

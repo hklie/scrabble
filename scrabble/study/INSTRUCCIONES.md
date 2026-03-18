@@ -1,6 +1,6 @@
 # Estudio — Sistema de Estudio y Quiz de Palabras
 
-Conjunto completo de herramientas para el estudio de palabras del Scrabble en espanol: scripts de analisis del lexico que generan listas de palabras categorizadas, mas un sistema interactivo de quiz con repeticion espaciada, 5 modos de estudio, 20 mazos preconfigurados y programacion SRS.
+Conjunto completo de herramientas para el estudio de palabras del Scrabble en espanol: scripts de analisis del lexico que generan listas de palabras categorizadas, mas un sistema interactivo de quiz con repeticion espaciada, 8 modos de estudio, consulta de palabras, 20 mazos preconfigurados y programacion SRS.
 
 ## Inicio Rapido
 
@@ -17,6 +17,12 @@ python -m study.quiz --mode anagram --deck words-5
 python -m study.quiz --mode hooks --deck 5L-end-l
 python -m study.quiz --mode pattern --deck verbs-7
 python -m study.quiz --mode morphology --length 6
+python -m study.quiz --mode transformation --deck words-4
+python -m study.quiz --mode extension --deck words-3
+
+# Herramientas de transformacion de palabras (CLI independiente)
+python -m study.transforms CASA              # Cambios de una letra
+python -m study.transforms --all CASA        # Todas las transformaciones
 
 # Ver progreso
 python -m study.quiz --stats
@@ -59,6 +65,9 @@ python scrabble/study/synergy.py
 | **Ganchos** | Dada una palabra, nombrar las letras que pueden engancharse antes y despues (los 28 tipos de fichas). Puntuacion por completitud. |
 | **Patron** | Palabra con ~40% de letras ocultas (se ocultan primero las de mayor valor). Completar la palabra. |
 | **Morfologia** | Dada una palabra, identificar su prefijo y sufijo. |
+| **Transformacion** | Dada una palabra con una posicion oculta, nombrar letras de reemplazo validas que formen nuevas palabras. Puntuacion por completitud. |
+| **Extension** | Dada una palabra con un espacio de insercion en una posicion aleatoria, nombrar letras validas para insertar. Puntuacion por completitud. |
+| **Reduccion** | Dada una palabra, identificar que letra(s) se pueden eliminar dejando una palabra valida. Puntuacion por completitud. |
 
 Todos los modos muestran informacion completa despues de cada tarjeta: ganchos, prefijo, sufijo, terminacion, tipo de verbo, anagramas y valor en puntos.
 
@@ -106,6 +115,7 @@ Todos los modos muestran informacion completa despues de cada tarjeta: ganchos, 
 
 ### Organizacion del Estudio
 
+- **Consultar palabra** (`c` en el menu): Verificar la validez de cualquier palabra contra el lexico FISE2. Muestra valor en puntos, ganchos, morfologia y conteo de transformaciones (cambios, inserciones, eliminaciones).
 - **Estudio por grupo** (`g` en el menu): Navegar y estudiar palabras agrupadas por prefijo, sufijo o terminacion comun. Navegacion paginada para seleccionar grupos.
 - **Estudio de verbos** (`v` en el menu): Filtrar verbos por longitud, comienzo, tipo (transitivo/intransitivo/pronominal/antiguo), o navegar comienzos agrupados por los primeros N caracteres.
 - **Filtro personalizado**: Especificar longitud, nivel consonantico (1–4), letra final y percentil minimo.
@@ -125,7 +135,7 @@ Ejecuta `python -m study.quiz --stats` para ver: total de palabras estudiadas, p
 
 | Opcion | Descripcion |
 |--------|-------------|
-| `--mode` | Modo de quiz: `review`, `anagram`, `hooks`, `pattern`, `morphology` |
+| `--mode` | Modo de quiz: `review`, `anagram`, `hooks`, `pattern`, `morphology`, `transformation`, `extension`, `reduction` |
 | `--deck` | Nombre del mazo preconfigurado (ver `--list-decks`) |
 | `--length` | Filtrar por longitud de palabra |
 | `--tier` | Filtrar por nivel consonantico (1–4) |
@@ -195,7 +205,8 @@ word_analysis.csv               ▼
 
 | Archivo | Tipo | Descripcion |
 |---------|------|-------------|
-| `quiz.py` | Aplicacion | Quiz CLI interactivo con 5 modos, menus de verbos/grupos |
+| `quiz.py` | Aplicacion | Quiz CLI interactivo con 8 modos, consulta de palabras, menus de verbos/grupos |
+| `transforms.py` | Biblioteca + CLI | Transformaciones de palabras: cambio, insercion, eliminacion de una letra (`python -m study.transforms`) |
 | `srs.py` | Motor | Algoritmo de repeticion espaciada SM-2 + persistencia JSON |
 | `decks.py` | Biblioteca | Carga de tarjetas, filtrado, 20 mazos, agrupacion |
 | `nouns_csv.py` | Generador | CSV completo de metadatos (probabilidad, ganchos, morfologia) |

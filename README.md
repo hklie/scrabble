@@ -37,13 +37,15 @@ scrabble/
 ├── scrabble/                      # Source code package
 │   ├── config.py                  # Central configuration (paths, constants, patterns)
 │   ├── preprocessing.py           # Digraph tokenization/detokenization
+│   ├── lexicon.py                 # Shared FISE2 trie: word validation, lookup, point values
 │   ├── analyze_board.py           # Board image OCR + best move finder
 │   ├── autoplay_scrabble.py       # Solitaire autoplay engine + board image renderer
 │   │
 │   ├── study/                     # Word list generation, analysis & quiz tools
-│   │   ├── quiz.py                # Interactive SRS quiz (review, anagram, hooks, pattern, morphology)
+│   │   ├── quiz.py                # Interactive SRS quiz (8 modes + word lookup)
 │   │   ├── srs.py                 # SM-2 spaced repetition engine + JSON persistence
 │   │   ├── decks.py               # Deck generation, presets, and filters from CSV data
+│   │   ├── transforms.py          # Word transformations: change, insert, remove one letter
 │   │   ├── clean_no_verbs.py      # Lexicon cleaning and deduplication
 │   │   ├── probability.py         # Probabilistic word ranking
 │   │   ├── study_list.py          # Tiered study list generation
@@ -108,6 +110,7 @@ All modules depend on:
 
 - **`config.py`** -- file paths, Scrabble tile/point data, digraph mappings, pattern definitions, tier groupings, premium square map, board analysis constants.
 - **`preprocessing.py`** -- `tokenize_word()` and `detokenize_word()` for digraph-aware text handling.
+- **`lexicon.py`** -- shared FISE2 trie: `load_lexicon_trie()`, `is_valid_word()`, `word_value()`, `build_trie()`, `_word_in_trie()`. Used by `analyze_board.py`, `study/quiz.py`, and `study/transforms.py`.
 
 ## Digraph Encoding
 
@@ -205,6 +208,18 @@ Foundation for all word manipulation across the project.
 | `tokenize_word` | `(word: str) -> list[str]` | Splits a word into tokens, detecting digraphs (`ch`, `ll`, `rr`) from their human-readable form and mapping them to internal codes |
 | `detokenize_word` | `(tokens: list[str]) -> str` | Reconstructs a readable word from a token list, expanding digit codes back to digraph strings |
 
+### lexicon.py
+
+Shared FISE2 trie utilities. Extracted from `analyze_board.py` to provide a clean API for word validation across all modules.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `load_lexicon_trie` | `() -> dict` | Load or build the FISE2 trie (pickle-cached). Cached in memory after first call. |
+| `is_valid_word` | `(word: str, trie=None) -> bool` | Check if a word exists in the FISE2 lexicon. Handles digraphs transparently. |
+| `word_value` | `(word: str) -> int` | Compute the point value of a word. |
+| `build_trie` | `(lexicon_path: str) -> dict` | Build/load a pickle-cached trie from any lexicon file. |
+| `_word_in_trie` | `(trie: dict, tokens: list) -> bool` | Validate that a token list exists in a trie. |
+
 ### analyze_board.py
 
 Board image analyzer and best move finder. Reads a photograph of a Spanish Scrabble board, identifies all tiles via OCR, and finds the highest-scoring legal plays using the Appel-Jacobson algorithm with a trie built from the FISE2 lexicon.
@@ -214,7 +229,7 @@ Board image analyzer and best move finder. Reads a photograph of a Spanish Scrab
 The module is organized in four parts:
 
 - **Part A — OCR:** Grayscale tile detection with subscript-based validation. Each real tile has a point-value subscript digit; the module classifies tiles by subscript size (`1pt`, `multi`, `10pt`) to disambiguate OCR confusions (N/Ñ, R/RR, L/LL, Z). Blank tiles are detected via red-ink ratio. Post-OCR validation corrects bag-limit violations (e.g., excess Ñ → N).
-- **Part B — Trie & Cross-checks:** Builds a trie from the FISE2 lexicon (cached as pickle). Computes per-cell cross-check sets for perpendicular word validation.
+- **Part B — Trie & Cross-checks:** Uses the shared trie from `lexicon.py` (FISE2 lexicon, cached as pickle). Computes per-cell cross-check sets for perpendicular word validation.
 - **Part C — Scoring:** Computes move scores with premium squares (DW, TW, DL, TL), cross-word scores, and 50-point bingo bonus for using all 7 rack tiles.
 - **Part D — Move Generation:** Appel-Jacobson algorithm with anchor-based search. Uses board transposition for vertical moves. Supports blank tiles (wildcards).
 
@@ -228,7 +243,7 @@ The module is organized in four parts:
 | `validate_board_tiles(board)` | Post-OCR correction using bag limits (max 1 Ñ, 1 RR, 1 LL) |
 | `read_board_image(path, reader)` | Full board OCR pipeline: find bounds → extract cells → detect tiles → recognize letters → validate |
 | `read_rack_image(path, reader)` | OCR a rack image, returns up to 7 tile tokens |
-| `build_trie(lexicon_path)` | Build/load cached trie from FISE2 lexicon |
+| `build_trie(lexicon_path)` | Build/load cached trie from FISE2 lexicon (imported from `lexicon.py`) |
 | `compute_cross_checks(board, trie)` | Per-cell valid tile sets based on perpendicular words |
 | `find_best_moves(board, rack, trie)` | Appel-Jacobson move generation + scoring, returns sorted moves |
 | `compute_remaining_tiles(board, rack)` | Calculates unseen tiles from bag minus board minus rack |
@@ -457,6 +472,38 @@ Builds word transformation chains where consecutive words differ by exactly one 
 
 **Input:** `No_verbos_filtrados.txt` | **Output:** `chains_study_list.txt`
 
+### study/transforms.py
+
+Word transformation tools: find all valid words formed by changing, inserting, or removing one letter. Uses the shared FISE2 trie from `lexicon.py`.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `one_letter_changes` | `(word: str, trie=None) -> list[dict]` | All valid words formed by changing one token. Each result: `{word, position, original, replacement, value}` |
+| `insert_letter` | `(word: str, trie=None) -> list[dict]` | All valid words formed by inserting one token anywhere. Each result: `{word, position, inserted, value}` |
+| `remove_letter` | `(word: str, trie=None) -> list[dict]` | All valid words formed by removing one token. Each result: `{word, position, removed, value}` |
+
+**Complexity:** `O(L * 28)` trie lookups for change/insert, `O(L)` for remove, where L = token length.
+
+**CLI usage:**
+
+```bash
+cd scrabble
+
+# One-letter changes (default)
+python -m study.transforms CASA
+
+# Insert a letter
+python -m study.transforms --insert CASA
+
+# Remove a letter
+python -m study.transforms --remove CASA
+
+# All transformations
+python -m study.transforms --all CASA
+```
+
+**Input:** Word (CLI arg) + FISE2 lexicon trie | **Output:** Transformation results grouped by position
+
 ### study/synergy.py
 
 Computes synergy scores for Scrabble rack leaves — the letter combinations remaining after playing a word. High-synergy leaves co-occur frequently in valid words. Uses an inverted index for fast submultiset matching against the corpus.
@@ -552,7 +599,7 @@ Deck generation and filtering from `word_analysis.csv` and `verbs.csv`. Provides
 
 ### study/quiz.py
 
-Interactive CLI quiz with 5 quiz modes, spaced repetition scheduling, and organized study decks for both words and verbs.
+Interactive CLI quiz with 8 quiz modes, word lookup, spaced repetition scheduling, and organized study decks for both words and verbs.
 
 **Quiz modes:**
 
@@ -563,6 +610,9 @@ Interactive CLI quiz with 5 quiz modes, spaced repetition scheduling, and organi
 | **Hooks** | Given a word, name the letters that can hook before/after it |
 | **Pattern** | Word with high-value letters blanked out, fill in the full word |
 | **Morphology** | Given a word, identify its prefix and suffix |
+| **Transformation** | Given a word with one position blanked, name valid replacement letters |
+| **Extension** | Given a word with an insertion slot, name valid letters to insert |
+| **Reduction** | Given a word, identify which letters can be removed to leave a valid word |
 
 **Study organization:**
 
@@ -571,6 +621,7 @@ Interactive CLI quiz with 5 quiz modes, spaced repetition scheduling, and organi
 | **Preset decks** | 19 presets organized by length, vowel patterns, scoring, endings, and verb length |
 | **Group study** | Study words grouped by shared prefix, suffix, or ending (paginated browser) |
 | **Verb study** | Filter verbs by length, beginning, type, or browse grouped beginnings |
+| **Word lookup** | Check word validity, see points, hooks, morphology, and transformation counts |
 
 After each card, all modes show full reveal info: front/back hooks, prefix, suffix, ending, verb type, and anagram count.
 
@@ -585,7 +636,8 @@ python -m study.quiz
 # Direct mode with preset deck
 python -m study.quiz --mode anagram --deck 7L-2vowels
 python -m study.quiz --mode hooks --deck words-5
-python -m study.quiz --mode pattern --deck verbs-6
+python -m study.quiz --mode transformation --deck words-4
+python -m study.quiz --mode extension --deck words-3
 
 # Filter by length, tier, or percentile
 python -m study.quiz --mode review --length 7
@@ -600,7 +652,7 @@ python -m study.quiz --list-decks
 
 | Option | Description |
 |--------|-------------|
-| `--mode` | Quiz mode: `review`, `anagram`, `hooks`, `pattern`, `morphology` |
+| `--mode` | Quiz mode: `review`, `anagram`, `hooks`, `pattern`, `morphology`, `transformation`, `extension`, `reduction` |
 | `--deck` | Preset deck name (see `--list-decks`) |
 | `--length` | Filter by word length |
 | `--tier` | Filter by consonant tier (1–4) |
@@ -617,12 +669,15 @@ python -m study.quiz --list-decks
 Words studied: 28   Due today: 12
 
 Modes:
-  1. Review    2. Anagram    3. Hooks
-  4. Pattern   5. Morphology
+  1. Review           2. Anagram
+  3. Hook quiz        4. Pattern fill
+  5. Morphology       6. Transformation
+  7. Extension        8. Reduction
 
 Options:
-  v. Verb study    g. Group study
-  s. Stats         d. List decks     q. Quit
+  c. Check word      v. Verb study
+  g. Group study     s. Stats
+  d. List decks      q. Quit
 ```
 
 **Input:** `word_analysis.csv`, `verbs.csv` | **Output:** `progress.json` (SRS state)
@@ -665,6 +720,8 @@ python -m study.quiz --mode anagram --deck words-5     # 5-letter anagram drill
 python -m study.quiz --mode hooks --deck 5L-end-l      # Hook quiz for 5L ending in L
 python -m study.quiz --mode pattern --deck verbs-7      # Pattern fill for 7-letter verbs
 python -m study.quiz --mode morphology --length 6       # Prefix/suffix quiz for 6L words
+python -m study.quiz --mode transformation --deck words-4  # One-letter change drill
+python -m study.quiz --mode extension --deck words-3       # Insert-letter drill
 
 # Progress
 python -m study.quiz --stats
@@ -687,6 +744,12 @@ python scrabble/study/vowel_patterns.py       # 7-letter vowel pattern filters
 python scrabble/study/generator.py            # Interactive word generator
 python scrabble/study/chains.py              # Transformation chains
 python scrabble/study/synergy.py             # Rack leave synergy values
+
+# Word transformation tools (standalone CLI)
+python -m study.transforms CASA              # One-letter changes
+python -m study.transforms --insert CASA     # Insert a letter
+python -m study.transforms --remove CASA     # Remove a letter
+python -m study.transforms --all CASA        # All transformations
 
 # Step 3: Run any filter module (most prompt for min/max token length)
 python scrabble/study/endings.py

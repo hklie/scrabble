@@ -34,7 +34,8 @@ from study.decks import (load_word_analysis, filter_cards, apply_preset,
                          load_verbs, filter_verbs,
                          group_verbs_by_beginning, group_verbs_by_type)
 from preprocessing import tokenize_word, detokenize_word
-from config import SCRABBLE_POINTS, DIGRAPHS, INTERNAL_POINTS
+from config import SCRABBLE_POINTS, DIGRAPHS, INTERNAL_POINTS, ALL_TILES
+from lexicon import load_lexicon_trie, is_valid_word, word_value, _word_in_trie
 
 
 # ── Terminal helpers ──
@@ -444,6 +445,263 @@ def run_morphology(session_cards, progress):
     return results
 
 
+# ── Transformation quiz mode ──
+
+def run_transformation(session_cards, progress):
+    """Show a word, player must find valid one-letter changes."""
+    from study.transforms import one_letter_changes
+
+    trie = load_lexicon_trie()
+    results = []
+    total = len(session_cards)
+
+    for i, card in enumerate(session_cards, 1):
+        clear_screen()
+        print(colored(f"  Transformation {i}/{total}", "bold"))
+        print()
+        print(f"  Word: {colored(card['word'].upper(), 'cyan')}")
+        print(f"  ({card['length']} letters, {card['value']} pts)")
+        print()
+
+        all_changes = one_letter_changes(card['word'], trie)
+        if not all_changes:
+            print("  No one-letter changes exist for this word.")
+            input_safe("  Enter to continue... ")
+            continue
+
+        # Pick a random position that has changes
+        positions_with_changes = {}
+        for c in all_changes:
+            positions_with_changes.setdefault(c['position'], []).append(c)
+
+        pos = random.choice(list(positions_with_changes.keys()))
+        pos_changes = positions_with_changes[pos]
+        tokens = list(card['tokens'])
+        orig_display = display_token(tokens[pos])
+
+        # Show word with one position highlighted
+        display_parts = []
+        for j, t in enumerate(tokens):
+            if j == pos:
+                display_parts.append(colored("_", "yellow"))
+            else:
+                display_parts.append(display_token(t))
+        print(f"  {' '.join(display_parts)}")
+        print(f"  Replace {colored(orig_display, 'yellow')} at position {pos + 1} "
+              f"to form a new word.")
+        print(f"  ({len(pos_changes)} valid replacement(s))")
+        print()
+
+        answer = input_safe("  Replacement letters (space-separated, ? to reveal): ")
+        if answer is None:
+            return results
+
+        if answer.strip() == "?":
+            quality = 0
+        else:
+            given = _parse_hook_input(answer)
+            actual = set(c['replacement'] for c in pos_changes)
+            quality = _quality_from_score(_hook_score(given, actual))
+
+        # Show all valid changes at this position
+        print()
+        for c in sorted(pos_changes, key=lambda x: x['word']):
+            print(f"    {c['replacement'].upper():4s} → {c['word'].upper()}  ({c['value']} pts)")
+
+        print(f"\n  Quality: {quality}")
+        input_safe("\n  Enter to continue... ")
+        state = progress.get(card["word"], CardState())
+        progress[card["word"]] = update_card(state, quality)
+        results.append((card["word"], quality))
+
+    return results
+
+
+# ── Extension quiz mode ──
+
+def run_extension(session_cards, progress):
+    """Show a word with a blank slot, player names valid letters to insert."""
+    from study.transforms import insert_letter
+
+    trie = load_lexicon_trie()
+    results = []
+    total = len(session_cards)
+
+    for i, card in enumerate(session_cards, 1):
+        clear_screen()
+        print(colored(f"  Extension {i}/{total}", "bold"))
+        print()
+        print(f"  Word: {colored(card['word'].upper(), 'cyan')}")
+        print(f"  ({card['length']} letters, {card['value']} pts)")
+        print()
+
+        all_inserts = insert_letter(card['word'], trie)
+        if not all_inserts:
+            print("  No insertions found for this word.")
+            input_safe("  Enter to continue... ")
+            continue
+
+        # Pick a random position
+        positions_with_inserts = {}
+        for ins in all_inserts:
+            positions_with_inserts.setdefault(ins['position'], []).append(ins)
+
+        pos = random.choice(list(positions_with_inserts.keys()))
+        pos_inserts = positions_with_inserts[pos]
+        tokens = list(card['tokens'])
+
+        # Show word with insertion slot
+        display_parts = []
+        for j, t in enumerate(tokens):
+            if j == pos:
+                display_parts.append(colored("[_]", "yellow"))
+            display_parts.append(display_token(t))
+        if pos == len(tokens):
+            display_parts.append(colored("[_]", "yellow"))
+
+        if pos == 0:
+            pos_label = "before first letter"
+        elif pos == len(tokens):
+            pos_label = "after last letter"
+        else:
+            pos_label = f"between positions {pos} and {pos + 1}"
+
+        print(f"  {'  '.join(display_parts)}")
+        print(f"  Insert a letter {pos_label}.")
+        print(f"  ({len(pos_inserts)} valid insertion(s))")
+        print()
+
+        answer = input_safe("  Letters to insert (space-separated, ? to reveal): ")
+        if answer is None:
+            return results
+
+        if answer.strip() == "?":
+            quality = 0
+        else:
+            given = _parse_hook_input(answer)
+            actual = set(ins['inserted'] for ins in pos_inserts)
+            quality = _quality_from_score(_hook_score(given, actual))
+
+        # Show all valid insertions at this position
+        print()
+        for ins in sorted(pos_inserts, key=lambda x: x['word']):
+            print(f"    +{ins['inserted'].upper():4s} → {ins['word'].upper()}  ({ins['value']} pts)")
+
+        print(f"\n  Quality: {quality}")
+        input_safe("\n  Enter to continue... ")
+        state = progress.get(card["word"], CardState())
+        progress[card["word"]] = update_card(state, quality)
+        results.append((card["word"], quality))
+
+    return results
+
+
+# ── Reduction quiz mode ──
+
+def run_reduction(session_cards, progress):
+    """Show a word, player must identify which letters can be removed."""
+    from study.transforms import remove_letter
+
+    trie = load_lexicon_trie()
+    results = []
+    total = len(session_cards)
+
+    for i, card in enumerate(session_cards, 1):
+        clear_screen()
+        print(colored(f"  Reduction {i}/{total}", "bold"))
+        print()
+        print(f"  Word: {colored(card['word'].upper(), 'cyan')}")
+        print(f"  ({card['length']} letters, {card['value']} pts)")
+        print()
+
+        all_removals = remove_letter(card['word'], trie)
+        if not all_removals:
+            print("  No valid removals for this word.")
+            input_safe("  Enter to continue... ")
+            continue
+
+        print(f"  Which letter(s) can be removed to leave a valid word?")
+        print(f"  ({len(all_removals)} valid removal(s))")
+        print()
+
+        answer = input_safe("  Letters to remove (space-separated, ? to reveal): ")
+        if answer is None:
+            return results
+
+        if answer.strip() == "?":
+            quality = 0
+        else:
+            given = _parse_hook_input(answer)
+            actual = set(r['removed'] for r in all_removals)
+            quality = _quality_from_score(_hook_score(given, actual))
+
+        # Show all valid removals
+        print()
+        tokens = list(card['tokens'])
+        for r in sorted(all_removals, key=lambda x: x['position']):
+            removed_display = display_token(tokens[r['position']])
+            print(f"    -{removed_display:4s} (pos {r['position'] + 1}) → "
+                  f"{r['word'].upper()}  ({r['value']} pts)")
+
+        print(f"\n  Quality: {quality}")
+        input_safe("\n  Enter to continue... ")
+        state = progress.get(card["word"], CardState())
+        progress[card["word"]] = update_card(state, quality)
+        results.append((card["word"], quality))
+
+    return results
+
+
+# ── Word lookup (Consultar palabra) ──
+
+def _word_lookup_menu(all_cards):
+    """Interactive word validity lookup with additional info."""
+    trie = load_lexicon_trie()
+    card_lookup = {c["word"]: c for c in all_cards}
+
+    while True:
+        clear_screen()
+        print(colored("  ── Consultar Palabra ──", "bold"))
+        print()
+        word = input_safe("  Word (q to go back): ")
+        if word is None or word.strip().lower() == "q":
+            return
+        word = word.strip().lower()
+        if not word:
+            continue
+
+        tokens = tokenize_word(word)
+        valid = _word_in_trie(trie, tokens)
+        value = sum(INTERNAL_POINTS.get(t, 0) for t in tokens)
+
+        print()
+        if valid:
+            print(f"  {colored(word.upper(), 'green')}  ── VÁLIDA")
+        else:
+            print(f"  {colored(word.upper(), 'red')}  ── NO VÁLIDA")
+
+        print(f"  {len(tokens)} letters  |  {value} pts")
+
+        # Show card info if available
+        card = card_lookup.get(word)
+        if card:
+            print()
+            _show_full_reveal(card)
+
+        # Show transforms summary
+        if valid:
+            from study.transforms import one_letter_changes, insert_letter, remove_letter
+            changes = one_letter_changes(word, trie)
+            inserts = insert_letter(word, trie)
+            removals = remove_letter(word, trie)
+            print()
+            print(f"  Transformations: {len(changes)} changes, "
+                  f"{len(inserts)} insertions, {len(removals)} removals")
+
+        print()
+        input_safe("  Enter to continue... ")
+
+
 # ── Quality input ──
 
 def _ask_quality():
@@ -535,8 +793,12 @@ def interactive_menu(args, all_cards, progress):
         print("    3. Hook quiz")
         print("    4. Pattern fill")
         print("    5. Morphology (prefix/suffix/ending)")
+        print("    6. Transformation (one-letter change)")
+        print("    7. Extension (insert a letter)")
+        print("    8. Reduction (remove a letter)")
         print()
         print("  Options:")
+        print("    c. Check word (consultar palabra)")
         print("    v. Verb study (by length, beginning, or type)")
         print("    g. Group study (by prefix, suffix, or ending)")
         print("    s. Show stats")
@@ -576,8 +838,14 @@ def interactive_menu(args, all_cards, progress):
             due_count = len(get_due_cards(progress))
             continue
 
+        if choice == "c":
+            _word_lookup_menu(all_cards)
+            continue
+
         mode_map = {"1": "review", "2": "anagram", "3": "hooks",
-                    "4": "pattern", "5": "morphology"}
+                    "4": "pattern", "5": "morphology",
+                    "6": "transformation", "7": "extension",
+                    "8": "reduction"}
         mode = mode_map.get(choice)
         if not mode:
             continue
@@ -603,7 +871,10 @@ def interactive_menu(args, all_cards, progress):
 
         run_fn = {"review": run_review, "anagram": run_anagram,
                   "hooks": run_hooks, "pattern": run_pattern,
-                  "morphology": run_morphology}[mode]
+                  "morphology": run_morphology,
+                  "transformation": run_transformation,
+                  "extension": run_extension,
+                  "reduction": run_reduction}[mode]
         results = run_fn(session_cards, progress)
         save_progress(progress)
 
@@ -915,14 +1186,17 @@ def _run_group_session(args, group_name, group_label, group_cards, progress):
     print("  Mode:")
     print("    1. Review        2. Anagram")
     print("    3. Hooks         4. Pattern")
-    print("    5. Morphology")
+    print("    5. Morphology    6. Transformation")
+    print("    7. Extension     8. Reduction")
     print()
 
     choice = input_safe("  Choice: ")
     if choice is None:
         return
     mode_map = {"1": "review", "2": "anagram", "3": "hooks",
-                "4": "pattern", "5": "morphology"}
+                "4": "pattern", "5": "morphology",
+                "6": "transformation", "7": "extension",
+                "8": "reduction"}
     mode = mode_map.get(choice.strip(), "review")
 
     pool = [c["word"] for c in group_cards]
@@ -941,7 +1215,10 @@ def _run_group_session(args, group_name, group_label, group_cards, progress):
 
     run_fn = {"review": run_review, "anagram": run_anagram,
               "hooks": run_hooks, "pattern": run_pattern,
-              "morphology": run_morphology}[mode]
+              "morphology": run_morphology,
+              "transformation": run_transformation,
+              "extension": run_extension,
+              "reduction": run_reduction}[mode]
     results = run_fn(session_cards, progress)
     save_progress(progress)
 
@@ -986,7 +1263,9 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__)
     parser.add_argument("--mode", choices=["review", "anagram", "hooks",
-                                           "pattern", "morphology"],
+                                           "pattern", "morphology",
+                                           "transformation", "extension",
+                                           "reduction"],
                         default=None)
     parser.add_argument("--deck", type=str, default=None,
                         help="Preset deck name")
@@ -1050,7 +1329,10 @@ def main():
     mode = args.mode or "review"
     run_fn = {"review": run_review, "anagram": run_anagram,
               "hooks": run_hooks, "pattern": run_pattern,
-              "morphology": run_morphology}[mode]
+              "morphology": run_morphology,
+              "transformation": run_transformation,
+              "extension": run_extension,
+              "reduction": run_reduction}[mode]
 
     results = run_fn(session_cards, progress)
     save_progress(progress)

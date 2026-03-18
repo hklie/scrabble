@@ -406,26 +406,30 @@ All user-facing strings must be in **Spanish**. Key translations:
 
 ## Implementation Priority
 
-| Priority | Feature | Effort | Dependencies |
-|----------|---------|--------|-------------|
-| **1** | Extract trie into shared `lexicon.py` | Small | None |
-| **2** | Word validity lookup — CLI + module (Feature 1) | Small | Priority 1 |
-| **3** | Transformation module — change/insert/remove (Features 2+3+4) | Medium | Priority 1 |
-| **4** | New CLI quiz modes for transforms (Transformación/Extensión/Reducción) | Medium | Priority 3 |
-| **5** | Refactor quiz logic into `quiz_engine.py` (decouple from terminal I/O) | Medium | None |
-| **6** | Web backend: FastAPI REST API + WebSocket quiz endpoint | Medium | Priorities 1–5 |
-| **7** | Web frontend: Word explorer page (consultar/transformar/extender/reducir) | Medium | Priority 6 |
-| **8** | Web frontend: Quiz page with all 8 modes + deck selector + SRS | Large | Priority 6 |
-| **9** | Web frontend: Dashboard (progress, due cards, stats) | Small | Priority 8 |
-| **10** | Mobile-responsive design + Scrabble tile rendering | Medium | Priorities 7–9 |
-| **11** | On-screen Spanish keyboard (with CH, LL, RR, Ñ) | Small | Priority 10 |
-| **12** | Multiplayer quiz races (club/LAN mode) | Large | Priority 8 |
-| **13** | Cloud deployment: Docker + multi-user auth + DB | Large | Priority 10 |
+| Priority | Feature | Effort | Dependencies | Status |
+|----------|---------|--------|-------------|--------|
+| **1** | Extract trie into shared `lexicon.py` | Small | None | ✅ Done |
+| **2** | Word validity lookup — CLI + module (Feature 1) | Small | Priority 1 | ✅ Done |
+| **3** | Transformation module — change/insert/remove (Features 2+3+4) | Medium | Priority 1 | ✅ Done |
+| **4** | New CLI quiz modes for transforms (Transformación/Extensión/Reducción) | Medium | Priority 3 | ✅ Done |
+| **5** | Refactor quiz logic into `quiz_engine.py` (decouple from terminal I/O) | Medium | None | |
+| **6** | Web backend: FastAPI REST API + WebSocket quiz endpoint | Medium | Priorities 1–5 | |
+| **7** | Web frontend: Word explorer page (consultar/transformar/extender/reducir) | Medium | Priority 6 | |
+| **8** | Web frontend: Quiz page with all 8 modes + deck selector + SRS | Large | Priority 6 | |
+| **9** | Web frontend: Dashboard (progress, due cards, stats) | Small | Priority 8 | |
+| **10** | Mobile-responsive design + Scrabble tile rendering | Medium | Priorities 7–9 | |
+| **11** | On-screen Spanish keyboard (with CH, LL, RR, Ñ) | Small | Priority 10 | |
+| **12** | Multiplayer quiz races (club/LAN mode) | Large | Priority 8 | |
+| **13** | Cloud deployment: Docker + multi-user auth + DB | Large | Priority 10 | |
 
 ### Milestone Plan
 
-**Milestone A — CLI Complete** (Priorities 1–4):
+**Milestone A — CLI Complete** (Priorities 1–4): ✅ **DONE**
 Features 1–4 work via the terminal quiz. All word operations (validate, transform, extend, reduce) available as both quiz modes and standalone tools. No web dependency.
+
+- `lexicon.py`: Shared trie module with `load_lexicon_trie()`, `is_valid_word()`, `word_value()`. Trie code extracted from `analyze_board.py`.
+- `study/transforms.py`: `one_letter_changes()`, `insert_letter()`, `remove_letter()` + standalone CLI (`python -m study.transforms PALABRA [--insert] [--remove] [--all]`).
+- `study/quiz.py`: 3 new quiz modes (Transformación, Extensión, Reducción) + word lookup menu option (`c. Consultar palabra`).
 
 **Milestone B — Web MVP** (Priorities 5–9):
 All 8 quiz modes + word explorer + SRS dashboard running in the browser. Single-user, localhost. The "Zyzzyva for Spanish" experience is complete.

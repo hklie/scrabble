@@ -24,6 +24,7 @@ from config import (
     PREMIUM_SQUARES,
 )
 from preprocessing import tokenize_word, detokenize_word
+from lexicon import TRIE_TERMINAL, build_trie, _word_in_trie
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -565,52 +566,8 @@ def compute_remaining_tiles(board, rack):
 # Part B — Trie & Move Generation
 # ---------------------------------------------------------------------------
 
-TRIE_TERMINAL = ''   # sentinel key: present in dict iff node is a word end
 
-
-def _build_trie_from_file(lexicon_path):
-    """Build a trie as nested dicts. Presence of TRIE_TERMINAL key marks word end."""
-    root = {}
-    with open(lexicon_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            word = line.strip()
-            if not word:
-                continue
-            node = root
-            for ch in word:
-                if ch not in node:
-                    node[ch] = {}
-                node = node[ch]
-            node[TRIE_TERMINAL] = True
-    return root
-
-
-def build_trie(lexicon_path):
-    """Load trie from pickle cache if fresh, otherwise build and cache."""
-    import pickle
-    cache_path = lexicon_path + '.trie.pkl'
-    lexicon_mtime = os.path.getmtime(lexicon_path)
-
-    if os.path.exists(cache_path):
-        if os.path.getmtime(cache_path) >= lexicon_mtime:
-            with open(cache_path, 'rb') as f:
-                return pickle.load(f)
-
-    root = _build_trie_from_file(lexicon_path)
-    with open(cache_path, 'wb') as f:
-        pickle.dump(root, f, protocol=pickle.HIGHEST_PROTOCOL)
-    return root
-
-
-def _word_in_trie(trie, tokens):
-    """Validate that a word (list of internal tokens) exists in the trie."""
-    node = trie
-    for t in tokens:
-        if t in node:
-            node = node[t]
-        else:
-            return False
-    return TRIE_TERMINAL in node
+# TRIE_TERMINAL, build_trie, and _word_in_trie are imported from lexicon.py
 
 
 def transpose_board(board):
