@@ -170,12 +170,55 @@ scrabble/web/
 
 ---
 
-## Milestone D — Multijugador y Cloud
+## Milestone D — Contenido Enriquecido (Definiciones, Imágenes, Mnemónicos)
+
+Actualmente el sistema solo sabe si una palabra es válida, su valor en puntos, ganchos y morfología. No contiene significados, imágenes ni ayudas de memoria.
+
+| # | Tarea | Esfuerzo | Descripción |
+|---|-------|----------|-------------|
+| 12 | Modelo de datos para definiciones | Pequeño | Archivo `definitions.json` o tabla en BD mapeando palabra → definición corta, mnemónico, categoría semántica, URL de imagen |
+| 13 | Fuente de definiciones | Grande | Evaluar opciones: diccionario RAE (restricciones legales), Wikcionario (licencia libre), diccionario colaborativo de la comunidad Scrabble, o IA generativa para definiciones cortas |
+| 14 | Interfaz de edición de definiciones | Medio | Formulario web para agregar/editar definiciones manualmente. Cualquier usuario puede contribuir definiciones al explorador |
+| 15 | Mostrar definiciones en el explorador | Pequeño | Pestaña "Significado" en el explorador de palabras con definición, categoría semántica y mnemónico |
+| 16 | Mostrar definiciones en el quiz (reveal) | Pequeño | Panel de revelación incluye definición después de cada tarjeta en todos los modos |
+| 17 | Imágenes/thumbnails para sustantivos | Grande | Generar o buscar imágenes para sustantivos comunes. Vincular con definiciones. Mostrar en explorador y reveal |
+| 18 | Mnemónicos para palabras difíciles | Medio | Sistema de ayudas de memoria: frases cortas, asociaciones, contexto ("YANGÜES = pueblo de Don Quijote"). Pueden ser generados por IA o contribuidos por la comunidad |
+| 19 | Categorías semánticas | Medio | Clasificar palabras por campo semántico (animales, plantas, geografía, etc.) para crear mazos temáticos de estudio |
+| 20 | Importar/exportar definiciones | Pequeño | Formato JSON/CSV para compartir definiciones entre usuarios o clubs |
+
+### Fuentes de Datos Posibles
+
+| Fuente | Ventajas | Desventajas |
+|--------|----------|-------------|
+| **RAE (dle.rae.es)** | Autoridad oficial, completa | Restricciones de uso, no permite scraping |
+| **Wikcionario** | Licencia libre (CC BY-SA) | Cobertura incompleta para palabras raras del Scrabble |
+| **Comunidad Scrabble** | Relevante, enfocada en memorización | Requiere esfuerzo de contribución, control de calidad |
+| **IA generativa** | Rápida, puede generar mnemónicos | Puede tener errores, requiere verificación |
+| **Combinación** | Lo mejor de cada fuente | Mayor complejidad de integración |
+
+### Estructura de Datos Propuesta
+
+```json
+{
+  "casa": {
+    "definicion": "Edificio para habitar",
+    "mnemonico": "",
+    "categoria": "construcción",
+    "imagen_url": "",
+    "fuente": "wikcionario",
+    "contribuido_por": ""
+  }
+}
+```
+
+---
+
+## Milestone E — Multijugador y Cloud
 
 | # | Tarea | Esfuerzo |
 |---|-------|----------|
-| 12 | Carreras de quiz multijugador (modo club/LAN) | Grande |
-| 13 | Despliegue en cloud: Docker + autenticación + BD | Grande |
+| 21 | Carreras de quiz multijugador (modo club/LAN) | Grande |
+| 22 | Despliegue en cloud: Docker + autenticación + BD | Grande |
 
 ---
 
