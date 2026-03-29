@@ -38,8 +38,11 @@ scrabble/
 │   ├── config.py                  # Central configuration (paths, constants, patterns)
 │   ├── preprocessing.py           # Digraph tokenization/detokenization
 │   ├── lexicon.py                 # Shared FISE2 trie: word validation, lookup, point values
-│   ├── analyze_board.py           # Board image OCR + best move finder
-│   ├── autoplay_scrabble.py       # Solitaire autoplay engine + board image renderer
+│   ├── analyze_board.py           # Board image OCR + best move finder (→ migrating to play/)
+│   ├── autoplay_scrabble.py       # Solitaire autoplay engine + board image renderer (→ migrating to play/)
+│   │
+│   ├── play/                      # Board training: analyze positions, evaluate moves, rack leave (planned)
+│   │   └── TODO.md                # Roadmap: reorganize + interactive training + web UI
 │   │
 │   ├── study/                     # Word list generation, analysis & quiz tools
 │   │   ├── quiz.py                # Interactive SRS quiz (8 modes + word lookup)
