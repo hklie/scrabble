@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estudio Scrabble Español</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+.container { max-width: 800px; margin: 0 auto; padding: 16px; }
+h1 { color: #4ecca3; font-size: 1.5em; text-align: center; margin-bottom: 8px; }
+h2 { color: #4ecca3; font-size: 1.2em; margin: 16px 0 8px; }
+h3 { color: #aaa; font-size: 0.95em; margin: 12px 0 6px; }
+
+/* Stats bar */
+.stats { display: flex; justify-content: center; gap: 20px; padding: 8px; background: #16213e;
+         border-radius: 8px; margin-bottom: 16px; font-size: 0.9em; flex-wrap: wrap; }
+.stats span { color: #aaa; }
+.stats b { color: #4ecca3; }
+
+/* Navigation */
+.nav { display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap; }
+.nav button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+              font-size: 1em; font-weight: 600; }
+.nav .active { background: #4ecca3; color: #1a1a2e; }
+.nav button:not(.active) { background: #16213e; color: #aaa; }
+.nav button:not(.active):hover { background: #0f3460; color: #eee; }
+
+/* Screens */
+.screen { display: none; }
+.screen.visible { display: block; }
+
+/* Inputs */
+input[type=text], input[type=number], select {
+  background: #16213e; color: #eee; border: 1px solid #333; border-radius: 6px;
+  padding: 10px 14px; font-size: 1em; width: 100%; }
+input:focus, select:focus { border-color: #4ecca3; outline: none; }
+
+/* Buttons */
+.btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;
+       font-size: 1em; font-weight: 600; }
+.btn-primary { background: #4ecca3; color: #1a1a2e; }
+.btn-primary:hover { background: #3ba88c; }
+.btn-danger { background: #e94560; color: #fff; }
+.btn-sm { padding: 6px 12px; font-size: 0.85em; }
+.btn-secondary { background: #16213e; color: #aaa; border: 1px solid #333; }
+.btn-secondary:hover { color: #eee; border-color: #4ecca3; }
+
+/* Tiles */
+.tile { display: inline-flex; align-items: center; justify-content: center;
+        width: 44px; height: 44px; background: #c7a94e; color: #1a1a2e;
+        font-weight: bold; font-size: 1.3em; border-radius: 6px;
+        margin: 2px; position: relative; user-select: none; }
+.tile .pts { position: absolute; bottom: 2px; right: 4px; font-size: 0.45em; font-weight: normal; }
+.tile.blank { background: #555; color: #eee; }
+.tile.slot { background: #0f3460; color: #4ecca3; border: 2px dashed #4ecca3; }
+.tiles-row { display: flex; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
+
+/* Word info card */
+.word-info { background: #16213e; border-radius: 8px; padding: 16px; margin: 12px 0; }
+.word-info .badge { display: inline-block; padding: 4px 12px; border-radius: 12px;
+                    font-weight: 600; font-size: 0.85em; margin-right: 8px; }
+.badge-valid { background: #4ecca3; color: #1a1a2e; }
+.badge-invalid { background: #e94560; color: #fff; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; font-size: 0.9em; }
+.info-grid .label { color: #aaa; }
+.hooks-list { font-size: 0.85em; color: #aaa; margin: 4px 0; }
+.hooks-list b { color: #eee; }
+
+/* Transforms section */
+.transform-section { margin: 8px 0; }
+.transform-section summary { cursor: pointer; color: #4ecca3; font-weight: 600; padding: 6px 0; }
+.transform-item { font-size: 0.85em; padding: 2px 8px; color: #ccc; }
+
+/* Quiz */
+.progress-bar { width: 100%; height: 6px; background: #16213e; border-radius: 3px; margin: 12px 0; }
+.progress-fill { height: 100%; background: #4ecca3; border-radius: 3px; transition: width 0.3s; }
+.quiz-prompt { text-align: center; padding: 20px 0; }
+.quiz-prompt .big { font-size: 1.8em; color: #4ecca3; font-weight: bold; margin: 8px 0; }
+.quiz-prompt .hint { color: #aaa; font-size: 0.9em; }
+.quiz-actions { display: flex; gap: 8px; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+.quality-btns { display: flex; gap: 6px; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+.quality-btns button { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer;
+                        font-size: 0.85em; background: #16213e; color: #aaa; }
+.quality-btns button:hover { background: #0f3460; color: #eee; }
+.result-ok { color: #4ecca3; font-weight: bold; text-align: center; font-size: 1.2em; margin: 8px; }
+.result-fail { color: #e94560; font-weight: bold; text-align: center; font-size: 1.2em; margin: 8px; }
+
+/* Deck selector */
+.deck-grid { display: grid; gap: 6px; margin: 8px 0; }
+.deck-btn { text-align: left; padding: 10px 14px; background: #16213e; border: 1px solid #333;
+            border-radius: 6px; cursor: pointer; color: #eee; font-size: 0.9em; }
+.deck-btn:hover { border-color: #4ecca3; }
+.deck-btn .count { float: right; color: #4ecca3; }
+
+/* Mode grid */
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.mode-btn { padding: 14px; border: 1px solid #333; border-radius: 8px; cursor: pointer;
+            background: #16213e; color: #eee; text-align: center; font-size: 0.95em; }
+.mode-btn:hover { border-color: #4ecca3; }
+.mode-btn.selected { border-color: #4ecca3; background: #0f3460; }
+.mode-btn .mode-name { font-weight: 600; }
+.mode-btn .mode-desc { font-size: 0.8em; color: #aaa; margin-top: 4px; }
+
+/* Summary */
+.summary { background: #16213e; border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center; }
+.summary .big-num { font-size: 2em; color: #4ecca3; font-weight: bold; }
+.struggling-list { text-align: left; margin: 8px 0; }
+.struggling-list li { color: #e94560; margin: 2px 0; }
+
+@media (max-width: 480px) {
+  .tile { width: 36px; height: 36px; font-size: 1.1em; }
+  .mode-grid { grid-template-columns: 1fr; }
+  .info-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Estudio Scrabble Español</h1>
+  <div class="stats" id="stats-bar">Cargando...</div>
+
+  <div class="nav">
+    <button onclick="showScreen('explorer')" id="nav-explorer">Explorador</button>
+    <button onclick="showScreen('quiz-setup')" id="nav-quiz">Quiz</button>
+  </div>
+
+  <!-- ===== EXPLORER SCREEN ===== -->
+  <div class="screen" id="screen-explorer">
+    <input type="text" id="search-input" placeholder="Escribe una palabra..." autofocus>
+    <div id="search-results"></div>
+  </div>
+
+  <!-- ===== QUIZ SETUP SCREEN ===== -->
+  <div class="screen" id="screen-quiz-setup">
+    <h2>Modo de Quiz</h2>
+    <div class="mode-grid" id="mode-grid"></div>
+
+    <h2>Mazo</h2>
+    <div id="deck-list">Cargando mazos...</div>
+
+    <h3>Tamaño de sesión</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+      <input type="range" id="session-size" min="5" max="50" value="20" style="flex:1">
+      <span id="size-label">20</span>
+    </div>
+
+    <div style="text-align:center;margin:16px 0">
+      <button class="btn btn-primary" onclick="startQuiz()" id="start-btn" disabled>Iniciar Quiz</button>
+    </div>
+  </div>
+
+  <!-- ===== QUIZ ACTIVE SCREEN ===== -->
+  <div class="screen" id="screen-quiz-active">
+    <div class="progress-bar"><div class="progress-fill" id="quiz-progress"></div></div>
+    <div style="text-align:center;color:#aaa;font-size:0.85em" id="quiz-counter"></div>
+    <div id="quiz-content"></div>
+  </div>
+
+  <!-- ===== SUMMARY SCREEN ===== -->
+  <div class="screen" id="screen-summary">
+    <div class="summary" id="summary-content"></div>
+    <div style="text-align:center;margin:16px">
+      <button class="btn btn-primary" onclick="showScreen('quiz-setup')">Volver</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let selectedMode = '';
+let selectedDeck = '';
+let sessionId = '';
+let POINT_MAP = {
+  'a':1,'b':3,'c':3,'d':2,'e':1,'f':4,'g':2,'h':4,'i':1,'j':8,
+  'l':1,'m':3,'n':1,'o':1,'p':3,'q':5,'r':1,'s':1,'t':1,'u':1,
+  'v':4,'x':8,'y':4,'z':10,'ch':5,'ll':8,'rr':8,'ñ':8
+};
+
+// ── Screens ──
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  document.getElementById('screen-' + name).classList.add('visible');
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  if (name === 'explorer') document.getElementById('nav-explorer').classList.add('active');
+  else document.getElementById('nav-quiz').classList.add('active');
+}
+
+// ── Stats ──
+async function loadStats() {
+  try {
+    const r = await fetch(API + '/api/progreso');
+    const d = await r.json();
+    document.getElementById('stats-bar').innerHTML =
+      `<span>Estudiadas: <b>${d.total}</b></span>` +
+      `<span>Pendientes: <b>${d.due}</b></span>` +
+      `<span>Dominadas: <b>${d.mastered}</b></span>` +
+      `<span>Repasos: <b>${d.total_reviews}</b></span>`;
+  } catch(e) {
+    document.getElementById('stats-bar').textContent = 'Error cargando estadísticas';
+  }
+}
+
+// ── Tile rendering ──
+function renderTile(letter, isBlank, isSlot) {
+  let lower = letter.toLowerCase();
+  let pts = POINT_MAP[lower] || '';
+  let cls = 'tile';
+  if (isBlank) cls += ' blank';
+  if (isSlot) cls += ' slot';
+  return `<span class="${cls}">${letter}${pts ? `<span class="pts">${pts}</span>` : ''}</span>`;
+}
+
+function renderTiles(letters) {
+  return '<div class="tiles-row">' +
+    letters.map(l => {
+      if (l === '_') return renderTile('?', true, false);
+      if (l === '[_]') return renderTile('+', false, true);
+      return renderTile(l, false, false);
+    }).join('') + '</div>';
+}
+
+// ── Explorer ──
+let searchTimer = null;
+document.getElementById('search-input').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  const w = this.value.trim();
+  if (!w) { document.getElementById('search-results').innerHTML = ''; return; }
+  searchTimer = setTimeout(() => searchWord(w), 300);
+});
+document.getElementById('search-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { clearTimeout(searchTimer); searchWord(this.value.trim()); }
+});
+
+async function searchWord(word) {
+  if (!word) return;
+  const el = document.getElementById('search-results');
+  el.innerHTML = '<p style="color:#aaa">Buscando...</p>';
+  try {
+    const r = await fetch(API + '/api/validar/' + encodeURIComponent(word));
+    const d = await r.json();
+    let html = '<div class="word-info">';
+    html += `<span class="badge ${d.valid ? 'badge-valid' : 'badge-invalid'}">${d.valid ? 'VÁLIDA' : 'NO VÁLIDA'}</span>`;
+    html += `<span style="font-size:1.3em;font-weight:bold;margin-left:8px">${d.word.toUpperCase()}</span>`;
+    html += '<div class="info-grid">';
+    html += `<div><span class="label">Longitud:</span> ${d.length}</div>`;
+    html += `<div><span class="label">Puntos:</span> ${d.value}</div>`;
+    if (d.percentile) html += `<div><span class="label">Percentil:</span> ${d.percentile}</div>`;
+    if (d.prefix) html += `<div><span class="label">Prefijo:</span> ${d.prefix}-</div>`;
+    if (d.suffix) html += `<div><span class="label">Sufijo:</span> -${d.suffix}</div>`;
+    if (d.ending) html += `<div><span class="label">Terminación:</span> ${d.ending}</div>`;
+    if (d.anagrams > 1) html += `<div><span class="label">Anagramas:</span> ${d.anagrams}</div>`;
+    if (d.verb_type) html += `<div><span class="label">Tipo:</span> ${d.verb_type}</div>`;
+    html += '</div>';
+    if (d.front_hooks.length) html += `<div class="hooks-list"><b>Ganchos delanteros:</b> ${d.front_hooks.join(', ')}</div>`;
+    if (d.back_hooks.length) html += `<div class="hooks-list"><b>Ganchos traseros:</b> ${d.back_hooks.join(', ')}</div>`;
+    html += '</div>';
+
+    if (d.valid) {
+      html += '<details class="transform-section"><summary>Transformaciones</summary><div id="transforms-list">Cargando...</div></details>';
+      html += '<details class="transform-section"><summary>Extensiones</summary><div id="extensions-list">Cargando...</div></details>';
+      html += '<details class="transform-section"><summary>Reducciones</summary><div id="reductions-list">Cargando...</div></details>';
+    }
+    el.innerHTML = html;
+
+    if (d.valid) {
+      document.querySelector('details:nth-of-type(1)').addEventListener('toggle', async function() {
+        if (this.open && this.querySelector('#transforms-list').textContent === 'Cargando...') {
+          const t = await (await fetch(API + '/api/transformar/' + encodeURIComponent(word))).json();
+          let h = `<p style="color:#aaa;font-size:0.85em">${t.count} transformaciones</p>`;
+          for (const [pos, items] of Object.entries(t.by_position)) {
+            h += `<p style="color:#4ecca3;font-size:0.85em;margin-top:6px">Posición ${parseInt(pos)+1}:</p>`;
+            items.forEach(i => { h += `<div class="transform-item">${i.replacement.toUpperCase()} → ${i.word.toUpperCase()} (${i.value} pts)</div>`; });
+          }
+          this.querySelector('#transforms-list').innerHTML = h;
+        }
+      });
+      document.querySelector('details:nth-of-type(2)').addEventListener('toggle', async function() {
+        if (this.open && this.querySelector('#extensions-list').textContent === 'Cargando...') {
+          const t = await (await fetch(API + '/api/extender/' + encodeURIComponent(word))).json();
+          let h = `<p style="color:#aaa;font-size:0.85em">${t.count} extensiones</p>`;
+          for (const [pos, items] of Object.entries(t.by_position)) {
+            h += `<p style="color:#4ecca3;font-size:0.85em;margin-top:6px">Posición ${parseInt(pos)+1}:</p>`;
+            items.forEach(i => { h += `<div class="transform-item">+${i.inserted.toUpperCase()} → ${i.word.toUpperCase()} (${i.value} pts)</div>`; });
+          }
+          this.querySelector('#extensions-list').innerHTML = h;
+        }
+      });
+      document.querySelector('details:nth-of-type(3)').addEventListener('toggle', async function() {
+        if (this.open && this.querySelector('#reductions-list').textContent === 'Cargando...') {
+          const t = await (await fetch(API + '/api/reducir/' + encodeURIComponent(word))).json();
+          let h = `<p style="color:#aaa;font-size:0.85em">${t.count} reducciones</p>`;
+          t.results.forEach(i => { h += `<div class="transform-item">-${i.removed.toUpperCase()} (pos ${i.position+1}) → ${i.word.toUpperCase()} (${i.value} pts)</div>`; });
+          this.querySelector('#reductions-list').innerHTML = h;
+        }
+      });
+    }
+  } catch(e) {
+    el.innerHTML = '<p style="color:#e94560">Error de conexión</p>';
+  }
+}
+
+// ── Quiz Setup ──
+const MODES = [
+  {id:'review', name:'Repaso', desc:'Tarjetas con autoevaluación'},
+  {id:'anagram', name:'Anagrama', desc:'Letras desordenadas → palabra'},
+  {id:'hooks', name:'Ganchos', desc:'Letras que se enganchan'},
+  {id:'pattern', name:'Patrón', desc:'Completar letras ocultas'},
+  {id:'morphology', name:'Morfología', desc:'Identificar prefijo/sufijo'},
+  {id:'transformation', name:'Transformación', desc:'Cambiar una letra'},
+  {id:'extension', name:'Extensión', desc:'Insertar una letra'},
+  {id:'reduction', name:'Reducción', desc:'Eliminar una letra'},
+];
+
+function buildModeGrid() {
+  const el = document.getElementById('mode-grid');
+  el.innerHTML = MODES.map(m =>
+    `<div class="mode-btn" onclick="selectMode('${m.id}', this)">
+      <div class="mode-name">${m.name}</div>
+      <div class="mode-desc">${m.desc}</div>
+    </div>`
+  ).join('');
+}
+
+function selectMode(id, el) {
+  selectedMode = id;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  checkStartReady();
+}
+
+async function loadDecks() {
+  try {
+    const r = await fetch(API + '/api/mazos');
+    const d = await r.json();
+    let html = '';
+    d.categories.forEach(cat => {
+      html += `<h3>${cat.name}</h3><div class="deck-grid">`;
+      cat.decks.forEach(dk => {
+        html += `<div class="deck-btn" onclick="selectDeck('${dk.id}', this)">
+          ${dk.label} <span class="count">${dk.count}</span></div>`;
+      });
+      html += '</div>';
+    });
+    document.getElementById('deck-list').innerHTML = html;
+  } catch(e) {
+    document.getElementById('deck-list').innerHTML = '<p style="color:#e94560">Error cargando mazos</p>';
+  }
+}
+
+function selectDeck(id, el) {
+  selectedDeck = id;
+  document.querySelectorAll('.deck-btn').forEach(b => b.style.borderColor = '#333');
+  el.style.borderColor = '#4ecca3';
+  checkStartReady();
+}
+
+function checkStartReady() {
+  document.getElementById('start-btn').disabled = !(selectedMode && selectedDeck);
+}
+
+document.getElementById('session-size').addEventListener('input', function() {
+  document.getElementById('size-label').textContent = this.value;
+});
+
+// ── Quiz Session ──
+async function startQuiz() {
+  const size = parseInt(document.getElementById('session-size').value);
+  try {
+    const r = await fetch(API + '/api/quiz/iniciar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({mode: selectedMode, deck: selectedDeck, size})
+    });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    sessionId = d.session_id;
+    showScreen('quiz-active');
+    renderCard(d.card);
+  } catch(e) { alert('Error iniciando quiz'); }
+}
+
+function renderCard(card) {
+  const el = document.getElementById('quiz-content');
+  const pct = ((card.index) / card.total * 100);
+  document.getElementById('quiz-progress').style.width = pct + '%';
+  document.getElementById('quiz-counter').textContent = `Tarjeta ${card.index + 1} de ${card.total}`;
+
+  let html = '<div class="quiz-prompt">';
+
+  if (card.prompt_type === 'skip') {
+    html += `<p style="color:#aaa">${card.reason}</p>`;
+    html += `</div><div class="quiz-actions"><button class="btn btn-primary" onclick="nextCard()">Siguiente</button></div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  if (card.prompt_type === 'review') {
+    html += `<div class="big">${card.word_display}</div>`;
+    html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `</div>`;
+    html += `<div class="quiz-actions"><button class="btn btn-primary" onclick="revealReview()">Revelar</button></div>`;
+
+  } else if (card.prompt_type === 'anagram') {
+    html += renderTiles(card.scrambled);
+    html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `</div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Tu respuesta..." autocomplete="off"></div>`;
+    html += `<div class="quiz-actions">`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+
+  } else if (card.prompt_type === 'hooks') {
+    html += `<div class="big">${card.word_display}</div>`;
+    html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `</div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Ganchos (letras separadas por espacios)..." autocomplete="off"></div>`;
+    html += `<div class="quiz-actions">`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+
+  } else if (card.prompt_type === 'pattern') {
+    html += renderTiles(card.blanked);
+    html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `</div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Palabra completa..." autocomplete="off"></div>`;
+    html += `<div class="quiz-actions">`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+
+  } else if (card.prompt_type === 'morphology') {
+    html += `<div class="big">${card.word_display}</div>`;
+    html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `</div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="prefijo, sufijo (separados por coma)..." autocomplete="off"></div>`;
+    html += `<div class="quiz-actions">`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+
+  } else if (card.prompt_type === 'transformation') {
+    html += renderTiles(card.display);
+    html += `<div class="hint">Reemplazar ${card.original} en posición ${card.position+1} (${card.change_count} opciones)</div>`;
+    html += `</div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Letras de reemplazo..." autocomplete="off"></div>`;
+    html += `<div class="quiz-actions">`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+
+  } else if (card.prompt_type === 'extension') {
+    html += renderTiles(card.display);
+    html += `<div class="hint">Insertar en posición ${card.position+1} (${card.insert_count} opciones)</div>`;
+    html += `</div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Letras a insertar..." autocomplete="off"></div>`;
+    html += `<div class="quiz-actions">`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+
+  } else if (card.prompt_type === 'reduction') {
+    html += renderTiles(card.display);
+    html += `<div class="hint">${card.length} letras | ¿Cuáles se pueden eliminar? (${card.removal_count} opciones)</div>`;
+    html += `</div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Letras a eliminar..." autocomplete="off"></div>`;
+    html += `<div class="quiz-actions">`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+  }
+
+  el.innerHTML = html;
+
+  // Focus input and handle Enter
+  const inp = document.getElementById('quiz-input');
+  if (inp) {
+    inp.focus();
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') submitFromInput();
+    });
+  }
+}
+
+function submitFromInput() {
+  const inp = document.getElementById('quiz-input');
+  if (inp) submitAnswer(inp.value);
+}
+
+async function submitAnswer(answer) {
+  try {
+    const r = await fetch(API + `/api/quiz/${sessionId}/responder`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({answer})
+    });
+    const d = await r.json();
+
+    if (d.can_retry) {
+      const el = document.getElementById('quiz-content');
+      const inp = document.getElementById('quiz-input');
+      if (inp) { inp.value = ''; inp.focus(); }
+      el.insertAdjacentHTML('beforeend', '<div class="result-fail">Incorrecto — intenta de nuevo</div>');
+      return;
+    }
+
+    showResult(d);
+  } catch(e) { console.error(e); }
+}
+
+function showResult(d) {
+  const el = document.getElementById('quiz-content');
+  let html = '';
+
+  if (d.correct) html += '<div class="result-ok">¡Correcto!</div>';
+  else if (d.skipped) html += '<div class="result-fail">Revelado</div>';
+  else html += '<div class="result-fail">Incorrecto</div>';
+
+  html += `<div style="text-align:center;color:#aaa;font-size:0.85em">Calidad: ${d.quality}/5</div>`;
+
+  // Reveal info
+  if (d.reveal) {
+    const rv = d.reveal;
+    html += '<div class="word-info">';
+    html += `<div style="font-size:1.2em;font-weight:bold;color:#4ecca3;text-align:center">${rv.word}</div>`;
+    html += '<div class="info-grid">';
+    html += `<div><span class="label">Puntos:</span> ${rv.value}</div>`;
+    html += `<div><span class="label">Longitud:</span> ${rv.length}</div>`;
+    if (rv.prefix) html += `<div><span class="label">Prefijo:</span> ${rv.prefix}-</div>`;
+    if (rv.suffix) html += `<div><span class="label">Sufijo:</span> -${rv.suffix}</div>`;
+    if (rv.ending) html += `<div><span class="label">Terminación:</span> ${rv.ending}</div>`;
+    if (rv.verb_type) html += `<div><span class="label">Tipo:</span> ${rv.verb_type}</div>`;
+    html += '</div>';
+    if (rv.front_hooks && rv.front_hooks.length)
+      html += `<div class="hooks-list"><b>Ganchos delanteros:</b> ${rv.front_hooks.join(', ')}</div>`;
+    if (rv.back_hooks && rv.back_hooks.length)
+      html += `<div class="hooks-list"><b>Ganchos traseros:</b> ${rv.back_hooks.join(', ')}</div>`;
+    if (rv.score !== undefined)
+      html += `<div style="color:#aaa;font-size:0.85em">Puntuación: ${rv.score}%</div>`;
+
+    // Transform details
+    if (rv.changes) {
+      html += '<div style="margin-top:8px">';
+      rv.changes.forEach(c => { html += `<div class="transform-item">${c.replacement} → ${c.word} (${c.value} pts)</div>`; });
+      html += '</div>';
+    }
+    if (rv.inserts) {
+      html += '<div style="margin-top:8px">';
+      rv.inserts.forEach(i => { html += `<div class="transform-item">+${i.inserted} → ${i.word} (${i.value} pts)</div>`; });
+      html += '</div>';
+    }
+    if (rv.removals) {
+      html += '<div style="margin-top:8px">';
+      rv.removals.forEach(r => { html += `<div class="transform-item">-${r.removed} (pos ${r.position+1}) → ${r.word} (${r.value} pts)</div>`; });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Review mode: show quality buttons
+  if (selectedMode === 'review' && !d.done) {
+    html += '<div class="quality-btns">';
+    html += '<button onclick="rateCard(0)">0 Nulo</button>';
+    html += '<button onclick="rateCard(1)">1 Error</button>';
+    html += '<button onclick="rateCard(2)">2 Difícil</button>';
+    html += '<button onclick="rateCard(3)">3 Correcto</button>';
+    html += '<button onclick="rateCard(4)">4 Bien</button>';
+    html += '<button onclick="rateCard(5)">5 Fácil</button>';
+    html += '</div>';
+  } else if (d.done) {
+    showSummary(d.summary);
+    return;
+  } else {
+    html += `<div class="quiz-actions"><button class="btn btn-primary" onclick="nextCard()">Siguiente</button></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+async function revealReview() {
+  // Fetch reveal data WITHOUT advancing the card
+  try {
+    const r = await fetch(API + `/api/quiz/${sessionId}/revelar`);
+    const d = await r.json();
+    const rv = d.reveal;
+    const el = document.getElementById('quiz-content');
+    let html = '<div class="word-info">';
+    html += `<div style="font-size:1.2em;font-weight:bold;color:#4ecca3;text-align:center">${rv.word}</div>`;
+    html += '<div class="info-grid">';
+    html += `<div><span class="label">Puntos:</span> ${rv.value}</div>`;
+    html += `<div><span class="label">Longitud:</span> ${rv.length}</div>`;
+    if (rv.prefix) html += `<div><span class="label">Prefijo:</span> ${rv.prefix}-</div>`;
+    if (rv.suffix) html += `<div><span class="label">Sufijo:</span> -${rv.suffix}</div>`;
+    if (rv.ending) html += `<div><span class="label">Terminación:</span> ${rv.ending}</div>`;
+    if (rv.verb_type) html += `<div><span class="label">Tipo:</span> ${rv.verb_type}</div>`;
+    html += '</div>';
+    if (rv.front_hooks && rv.front_hooks.length)
+      html += `<div class="hooks-list"><b>Ganchos delanteros:</b> ${rv.front_hooks.join(', ')}</div>`;
+    if (rv.back_hooks && rv.back_hooks.length)
+      html += `<div class="hooks-list"><b>Ganchos traseros:</b> ${rv.back_hooks.join(', ')}</div>`;
+    html += '</div>';
+    html += '<p style="text-align:center;color:#aaa;margin:12px 0">¿Qué tan bien conocías esta palabra?</p>';
+    html += '<div class="quality-btns">';
+    html += '<button onclick="rateCard(0)">0 Nulo</button>';
+    html += '<button onclick="rateCard(1)">1 Error</button>';
+    html += '<button onclick="rateCard(2)">2 Difícil</button>';
+    html += '<button onclick="rateCard(3)">3 Correcto</button>';
+    html += '<button onclick="rateCard(4)">4 Bien</button>';
+    html += '<button onclick="rateCard(5)">5 Fácil</button>';
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) { console.error(e); }
+}
+
+async function rateCard(quality) {
+  try {
+    const r = await fetch(API + `/api/quiz/${sessionId}/calificar`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({quality})
+    });
+    const d = await r.json();
+    if (d.done) { showSummary(d.summary); return; }
+    nextCard();
+  } catch(e) { console.error(e); }
+}
+
+async function nextCard() {
+  try {
+    const r = await fetch(API + `/api/quiz/${sessionId}/siguiente`);
+    const d = await r.json();
+    if (d.done) { showSummary(d.summary); return; }
+    renderCard(d.card);
+  } catch(e) { console.error(e); }
+}
+
+function showSummary(summary) {
+  showScreen('summary');
+  let html = '<h2 style="color:#4ecca3">Resumen de Sesión</h2>';
+  html += `<div class="big-num">${summary.reviewed}</div><p style="color:#aaa">tarjetas revisadas</p>`;
+  html += `<p style="margin:8px 0">Calidad promedio: <b style="color:#4ecca3">${summary.avg_quality}</b> / 5</p>`;
+  if (summary.struggling && summary.struggling.length) {
+    html += '<h3 style="color:#e94560;margin-top:12px">Palabras en dificultad:</h3>';
+    html += '<ul class="struggling-list">';
+    summary.struggling.forEach(w => { html += `<li>${w}</li>`; });
+    html += '</ul>';
+  }
+  document.getElementById('summary-content').innerHTML = html;
+  loadStats();
+}
+
+// ── Init ──
+buildModeGrid();
+loadStats();
+loadDecks();
+showScreen('explorer');
+</script>
+</body>
+</html>
