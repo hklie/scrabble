@@ -201,11 +201,29 @@ word_analysis.csv               ▼
 | 3 | v, ch, y, q, f, h | Less common |
 | 4 | rr, ll, j, x, z, ñ | Rare |
 
+## Web UI
+
+The study tool has a web interface accessible from any browser.
+
+```bash
+cd scrabble
+python -m study.web.server --port 8080
+# Open http://localhost:8080
+```
+
+**Explorer**: Type any word to check validity, see points, hooks, prefix/suffix, and expand transformations/extensions/reductions.
+
+**Quiz**: Select a mode (8 available), pick a deck by category, set session size, and study with Scrabble-tile-styled cards. SRS progress is tracked across sessions.
+
+All text is in Spanish. Dark theme, responsive layout.
+
 ## Module Structure
 
 | File | Type | Description |
 |------|------|-------------|
 | `quiz.py` | App | Interactive CLI quiz with 8 modes, word lookup, verb/group study menus |
+| `web/server.py` | Web | FastAPI backend: REST API for explorer, quiz sessions, SRS, deck listing |
+| `web/static/index.html` | Web | Single-page frontend: explorer + quiz + dashboard (vanilla JS) |
 | `transforms.py` | Library + CLI | Word transformations: one-letter change, insert, remove (`python -m study.transforms`) |
 | `srs.py` | Engine | SM-2 spaced repetition algorithm + JSON persistence |
 | `decks.py` | Library | Card loading, filtering, 20 presets, group-by helpers |

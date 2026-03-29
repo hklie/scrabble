@@ -201,11 +201,29 @@ word_analysis.csv               ▼
 | 3 | v, ch, y, q, f, h | Menos comunes |
 | 4 | rr, ll, j, x, z, ñ | Raras |
 
+## Interfaz Web
+
+La herramienta de estudio tiene una interfaz web accesible desde cualquier navegador.
+
+```bash
+cd scrabble
+python -m study.web.server --port 8080
+# Abrir http://localhost:8080
+```
+
+**Explorador**: Escribe cualquier palabra para verificar validez, ver puntos, ganchos, prefijo/sufijo, y expandir transformaciones/extensiones/reducciones.
+
+**Quiz**: Selecciona un modo (8 disponibles), elige un mazo por categoria, configura el tamano de sesion y estudia con tarjetas estilo ficha de Scrabble. El progreso SRS se guarda entre sesiones.
+
+Todo el texto esta en espanol. Tema oscuro, diseno responsive.
+
 ## Estructura del Modulo
 
 | Archivo | Tipo | Descripcion |
 |---------|------|-------------|
 | `quiz.py` | Aplicacion | Quiz CLI interactivo con 8 modos, consulta de palabras, menus de verbos/grupos |
+| `web/server.py` | Web | Backend FastAPI: API REST para explorador, sesiones de quiz, SRS, listado de mazos |
+| `web/static/index.html` | Web | Frontend de pagina unica: explorador + quiz + dashboard (JS vanilla) |
 | `transforms.py` | Biblioteca + CLI | Transformaciones de palabras: cambio, insercion, eliminacion de una letra (`python -m study.transforms`) |
 | `srs.py` | Motor | Algoritmo de repeticion espaciada SM-2 + persistencia JSON |
 | `decks.py` | Biblioteca | Carga de tarjetas, filtrado, 20 mazos, agrupacion |

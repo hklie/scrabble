@@ -161,6 +161,65 @@ scrabble/web/
 
 ---
 
+## Milestone B.2 — QA de Interfaz y Historial de Actividad
+
+### QA de UI: Verificación de diseño y funcionalidad
+
+Cada opción del explorador y cada modo de quiz debe probarse y pulirse para asegurar un diseño, formato y experiencia consistentes.
+
+**Explorador — verificar cada sección:**
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| B2.1 | Validación de palabra: badge válida/no válida, puntos, longitud, percentil | |
+| B2.2 | Ganchos delanteros y traseros: formato legible, incluye dígrafos (CH, LL, RR, Ñ) | |
+| B2.3 | Morfología: prefijo, sufijo, terminación mostrados correctamente | |
+| B2.4 | Transformaciones: expandible, agrupado por posición, conteo correcto | |
+| B2.5 | Extensiones: expandible, agrupado por posición, conteo correcto | |
+| B2.6 | Reducciones: expandible, lista con posición y palabra resultante | |
+| B2.7 | Palabras con dígrafos: verificar que CH, LL, RR, Ñ se muestran y procesan correctamente | |
+| B2.8 | Palabras no válidas: mensaje claro "NO VÁLIDA", sin secciones de transformaciones | |
+
+**Quiz — verificar cada modo:**
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| B2.9 | Repaso: revelar muestra info completa, 6 botones de calidad, avanza correctamente | |
+| B2.10 | Anagrama: fichas desordenadas visibles, 2 intentos, reveal funciona, Enter envía | |
+| B2.11 | Ganchos: palabra visible, input acepta múltiples formatos, puntuación por completitud | |
+| B2.12 | Patrón: letras ocultas como `?`, input y validación, reveal muestra palabra completa | |
+| B2.13 | Morfología: inputs de prefijo/sufijo, scoring correcto | |
+| B2.14 | Transformación: posición marcada con `_`, input de letras, reveal muestra todas las opciones | |
+| B2.15 | Extensión: slot `[+]` visible en posición correcta, input y reveal | |
+| B2.16 | Reducción: palabra completa visible, input de letras eliminables, reveal con posiciones | |
+| B2.17 | Sesiones sin datos: mensaje claro cuando un mazo no tiene tarjetas o un modo no aplica | |
+| B2.18 | Resumen de sesión: tarjetas revisadas, calidad promedio, lista de palabras en dificultad | |
+| B2.19 | Barra de progreso y contador de tarjetas actualizándose correctamente | |
+
+**Flujo general:**
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| B2.20 | Navegación entre explorador y quiz sin perder estado | |
+| B2.21 | Estadísticas del dashboard actualizándose después de cada sesión | |
+| B2.22 | SRS: palabras pendientes aparecen primero, nuevas se introducen gradualmente | |
+| B2.23 | Consistencia visual: colores, tipografía, espaciado uniforme en todos los modos | |
+| B2.24 | Palabras con acentos (á, é, í, ó, ú, ü) se muestran y procesan correctamente | |
+
+### Historial de Actividad
+
+Registro visible de palabras exploradas y quizzes realizados, para consultar qué se ha estudiado y cuándo.
+
+| # | Tarea | Esfuerzo | Descripción |
+|---|-------|----------|-------------|
+| B2.25 | Log de palabras exploradas | Pequeño | Guardar las últimas N palabras buscadas en el explorador (en `localStorage` o `progress.json`). Mostrar como lista reciente debajo de la barra de búsqueda |
+| B2.26 | Historial de sesiones de quiz | Medio | Registrar cada sesión completada: fecha, modo, mazo, tarjetas revisadas, calidad promedio, palabras en dificultad. Persistir en `progress.json` o archivo separado `history.json` |
+| B2.27 | Vista de historial en la UI | Medio | Página o sección "Historial" accesible desde el dashboard: lista de sesiones pasadas con estadísticas, filtrable por fecha/modo/mazo |
+| B2.28 | Historial por palabra | Pequeño | En el explorador, al consultar una palabra, mostrar su historial SRS: veces revisada, última revisión, factor de facilidad, próxima revisión |
+| B2.29 | Exportar historial | Pequeño | Descargar historial de sesiones como CSV para análisis externo |
+
+---
+
 ## Milestone C — Móvil y Pulido
 
 | # | Tarea | Esfuerzo |
