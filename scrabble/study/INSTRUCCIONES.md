@@ -115,9 +115,14 @@ Todos los modos muestran informacion completa despues de cada tarjeta: ganchos, 
 
 ### Organizacion del Estudio
 
-- **Consultar palabra** (`c` en el menu): Verificar la validez de cualquier palabra contra el lexico FISE2. Muestra valor en puntos, ganchos, morfologia y conteo de transformaciones (cambios, inserciones, eliminaciones).
+- **Consultar palabra** (`c` en el menu): Verificar la validez de cualquier palabra contra el lexico FISE2. Muestra valor en puntos, ganchos, morfologia, transformaciones, historial SRS, y enlaces a RAE/Wikcionario/Wikipedia.
 - **Estudio por grupo** (`g` en el menu): Navegar y estudiar palabras agrupadas por prefijo, sufijo o terminacion comun. Navegacion paginada para seleccionar grupos.
 - **Estudio de verbos** (`v` en el menu): Filtrar verbos por longitud, comienzo, tipo (transitivo/intransitivo/pronominal/antiguo), o navegar comienzos agrupados por los primeros N caracteres.
+- **Listas personalizadas**: Importar listas propias (pegar palabras), agregar palabras desde el explorador ("+ Mi lista"), o guardar palabras en dificultad despues de un quiz. Las listas aparecen como mazos bajo "Mis listas".
+- **Buscar por prefijo**: Navegar los 46 prefijos con conteo de palabras, click para usar como mazo.
+- **Buscar por sufijo**: Navegar 94 sufijos individuales (-ana, -ano, -era, -ero, -illa, -illo, etc.), cada uno clickeable como mazo.
+- **Buscar por terminacion**: Navegar las 25 terminaciones incluyendo digrafos (CH, LL), con filtro opcional por longitud.
+- **Exportar mazos**: Descargar cualquier mazo preconfigurado como CSV o TXT directamente desde la lista de mazos.
 - **Filtro personalizado**: Especificar longitud, nivel consonantico (1–4), letra final y percentil minimo.
 
 ### Repeticion Espaciada (SRS)

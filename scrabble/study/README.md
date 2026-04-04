@@ -115,9 +115,14 @@ All modes show full reveal info after each card: hooks, prefix, suffix, ending, 
 
 ### Study Organization
 
-- **Word lookup** (`c` in menu): Check any word's validity against the FISE2 lexicon. Shows point value, hooks, morphology, and transformation counts (changes, insertions, removals).
+- **Word lookup** (`c` in menu): Check any word's validity against the FISE2 lexicon. Shows point value, hooks, morphology, transformation counts, SRS history, and links to RAE/Wikcionario/Wikipedia.
 - **Group study** (`g` in menu): Browse and study words grouped by shared prefix, suffix, or ending. Paginated browser for selecting groups.
 - **Verb study** (`v` in menu): Filter verbs by length, beginning, type (transitivo/intransitivo/pronominal/antiguo), or browse beginnings grouped by first N characters.
+- **Custom lists**: Import your own word lists (paste or type), add words from explorer ("+ Mi lista"), or save struggling words after a quiz. Lists appear as decks under "Mis listas".
+- **Prefix browser**: Browse all 46 prefixes with word counts, click to use as deck.
+- **Suffix browser**: Browse 94 individual suffixes (-ana, -ano, -era, -ero, -illa, -illo, etc.), each clickable as its own deck.
+- **Ending browser**: Browse all 25 endings including digraphs (CH, LL), with optional length filter.
+- **Deck export**: Download any preset deck as CSV or TXT directly from the deck list.
 - **Custom filter**: Specify length, consonant tier (1–4), ending letter, and minimum percentile.
 
 ### Spaced Repetition (SRS)

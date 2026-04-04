@@ -228,20 +228,20 @@ El usuario debe poder crear sus propias listas de palabras y personalizar qué p
 
 | # | Tarea | Esfuerzo | Descripción |
 |---|-------|----------|-------------|
-| B3.1 | Importar lista propia de palabras | Medio | Subir un archivo .txt (una palabra por línea) o pegar una lista en un textarea. El sistema valida cada palabra contra el léxico FISE2, descarta las inválidas, y crea un mazo personalizado |
-| B3.2 | Crear lista desde el explorador | Pequeño | Botón "Agregar a mi lista" en el explorador. El usuario va buscando palabras y las agrega a una lista nombrada |
-| B3.3 | Crear lista desde resultados de quiz | Pequeño | Después de cada sesión, opción de guardar las palabras en dificultad (quality < 3) como lista personalizada para repaso dirigido |
-| B3.4 | Gestión de listas | Medio | Ver, renombrar, eliminar y combinar listas personalizadas. Persistir en `Data/custom_lists.json` o directorio `Data/custom/` |
-| B3.5 | Listas personalizadas como mazos de quiz | Pequeño | Las listas aparecen en el selector de mazos junto a los preconfigurados, bajo categoría "Mis listas" |
+| B3.1 | Importar lista propia de palabras | Medio | ✅ Pegar palabras en textarea, validar contra FISE2, crear mazo personalizado |
+| B3.2 | Crear lista desde el explorador | Pequeño | ✅ Botón "+ Mi lista" en el explorador agrega palabras a lista personal |
+| B3.3 | Crear lista desde resultados de quiz | Pequeño | ✅ "Guardar como lista de repaso" en resumen de sesión con palabras en dificultad |
+| B3.4 | Gestión de listas | Medio | ✅ Ver y eliminar listas. Persistido en `Data/custom_lists.json` |
+| B3.5 | Listas personalizadas como mazos de quiz | Pequeño | ✅ Aparecen bajo categoría "Mis listas" en el selector de mazos |
 
 ### Prefijos y sufijos personalizables
 
 | # | Tarea | Esfuerzo | Descripción |
 |---|-------|----------|-------------|
-| B3.6 | Selector de prefijos para estudio | Medio | En la UI, mostrar todos los prefijos disponibles (de `config.EXTENSIVE_PREFIXES`) con conteo de palabras. El usuario selecciona cuáles quiere estudiar y genera un mazo al vuelo |
-| B3.7 | Selector de sufijos para estudio | Medio | Igual que B3.6 pero con `config.EXTENSIVE_SUFIXES`. Incluye sufijos con variantes vocálicas (erV, illV, etc.) |
+| B3.6 | Selector de prefijos para estudio | Medio | ✅ Browser con todos los prefijos, conteo, click para usar como mazo. Alfabético |
+| B3.7 | Selector de sufijos para estudio | Medio | ✅ Browser con sufijos individuales (-ana, -ano separados), solo variantes a/o/e, mínimo 15 palabras. 94 sufijos |
 | B3.8 | Filtros combinados | Medio | Combinar prefijo + sufijo + longitud + terminación + nivel consonántico en un solo filtro personalizado. Guardar filtros favoritos para reutilizar |
-| B3.9 | Generador de mazos por terminación | Pequeño | Seleccionar una o varias terminaciones (ej: L, N, R, Z, D) y una longitud para generar un mazo al vuelo |
+| B3.9 | Generador de mazos por terminación | Pequeño | ✅ Browser de 25 terminaciones (incluyendo CH, LL), filtro por longitud, click para usar como mazo |
 | B3.10 | Estudio por familias de palabras (raíz) | Grande | Dado un sufijo como -ero, el sistema extrae la raíz (COCAL de COCALERO), verifica si la raíz es válida, y muestra todas las palabras formadas con esa raíz + otros sufijos (COCALERA, COCALERO). Quiz: dado COCAL, ¿qué variantes con sufijos existen? Más educativo que solo buscar extensiones de cadena |
 | B3.11 | Extracción automática de raíces | Medio | Algoritmo que, dado un conjunto de sufijos conocidos (config.EXTENSIVE_SUFIXES), prueba quitar cada sufijo de una palabra para encontrar la raíz. Si la raíz es una palabra válida, se indexan todas las variantes. Ej: AGUILEÑO → raíz AGUIL (no válida) o AGUILERA → raíz AGUIL → variantes: AGUILA, AGUILEÑA, AGUILEÑO, AGUILILLA, AGUILON, AGUILUCHO |
 
@@ -249,25 +249,25 @@ El usuario debe poder crear sus propias listas de palabras y personalizar qué p
 
 | # | Tarea | Esfuerzo | Descripción |
 |---|-------|----------|-------------|
-| B3.12 | Endpoint: importar lista personalizada | Pequeño | `POST /api/listas` con body de palabras → valida, crea, retorna mazo |
-| B3.13 | Endpoint: listar/gestionar listas | Pequeño | `GET /api/listas`, `DELETE /api/listas/{id}`, `PUT /api/listas/{id}` |
-| B3.14 | Endpoint: prefijos/sufijos disponibles | Pequeño | `GET /api/prefijos` y `GET /api/sufijos` con conteo de palabras por cada uno |
+| B3.12 | Endpoint: importar lista personalizada | Pequeño | ✅ `POST /api/listas`, `GET /api/listas/{id}` |
+| B3.13 | Endpoint: listar/gestionar listas | Pequeño | ✅ `GET /api/listas`, `DELETE /api/listas/{id}`, `PUT /api/listas/{id}` |
+| B3.14 | Endpoint: prefijos/sufijos/terminaciones | Pequeño | ✅ `GET /api/prefijos`, `/api/sufijos`, `/api/terminaciones` con conteos |
 | B3.15 | Endpoint: generar mazo con filtros combinados | Pequeño | `POST /api/mazos/personalizado` con filtros → retorna mazo al vuelo |
 
 ### Visualización y navegación de mazos
 
 | # | Tarea | Esfuerzo | Descripción |
 |---|-------|----------|-------------|
-| B3.16 | Ver contenido completo de un mazo sin iniciar quiz | Medio | Al hacer click en un mazo SIN seleccionar modo de quiz, mostrar la lista completa de palabras del mazo en una tabla scrollable (palabra, puntos, longitud). Opción de ordenar por palabra, puntos o longitud. Cada palabra es clickable para ir al explorador |
-| B3.17 | Exportar mazo visible como CSV | Pequeño | Botón "Exportar CSV" en la vista de contenido del mazo. Descarga archivo CSV con columnas: palabra, puntos, longitud, prefijo, sufijo, ganchos delanteros, ganchos traseros |
+| B3.16 | Ver contenido completo de un mazo sin iniciar quiz | Medio | ✅ Click en mazo sin modo → tabla scrollable con palabra, puntos, longitud. Sortable. Click para explorar |
+| B3.17 | Exportar mazo visible como CSV | Pequeño | ✅ Botón CSV en vista de mazo + links csv/txt en cada mazo del selector |
 
 ### Exportación de mazos
 
 | # | Tarea | Esfuerzo | Descripción |
 |---|-------|----------|-------------|
-| B3.18 | Exportar mazo como .txt | Pequeño | `GET /api/mazo/{id}/exportar?formato=txt` → descarga archivo .txt con una palabra por línea. Incluir nombre del mazo y conteo de palabras en el encabezado |
+| B3.18 | Exportar mazo como .txt | Pequeño | ✅ `GET /api/mazo/{id}/txt` con encabezado Lexicable. Links txt en selector de mazos |
 | B3.19 | Exportar mazo como .pdf (compacto) | Medio | `GET /api/mazo/{id}/exportar?formato=pdf` → genera PDF con diseño compacto multi-columna (3-4 columnas) para minimizar páginas. Encabezado con nombre del mazo, fecha, conteo. Pie de página con "Lexicable — USA Lexico". Usar fuente pequeña (8-9pt) con espaciado mínimo. Para un mazo de 400 palabras, idealmente no más de 2-3 páginas |
-| B3.20 | Botón de exportar en la UI | Pequeño | En el selector de mazos, agregar ícono/botón de descarga junto a cada mazo. Al hacer click, ofrecer formato (.txt o .pdf) |
+| B3.20 | Botón de exportar en la UI | Pequeño | ✅ Links csv/txt en cada mazo del selector con stopPropagation |
 | B3.21 | Exportar lista personalizada | Pequeño | Misma funcionalidad de B3.16-B3.17 pero para listas creadas por el usuario |
 | B3.22 | Exportar resultados de quiz | Medio | Después del resumen de sesión, opción de descargar: palabras correctas, incorrectas, en dificultad, con puntuación y estadísticas SRS. Formatos: .txt y .pdf |
 
