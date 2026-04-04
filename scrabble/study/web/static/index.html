@@ -574,6 +574,9 @@ async function searchWord(word) {
     let html = '<div class="word-info">';
     html += `<span class="badge ${d.valid ? 'badge-valid' : 'badge-invalid'}">${d.valid ? 'VÁLIDA' : 'NO VÁLIDA'}</span>`;
     html += `<span style="font-size:1.3em;font-weight:bold;margin-left:8px">${d.word.toUpperCase()}</span>`;
+    if (d.valid) {
+      html += ` <button class="btn btn-sm btn-secondary" style="margin-left:8px;font-size:0.75em" onclick="addWordToList('${d.word}')">+ Mi lista</button>`;
+    }
     html += '<div class="info-grid">';
     html += `<div><span class="label">Longitud:</span> ${d.length}</div>`;
     html += `<div><span class="label">Puntos:</span> ${d.value}</div>`;
@@ -704,8 +707,12 @@ async function loadDecks() {
     d.categories.forEach(cat => {
       html += `<h3>${cat.name}</h3><div class="deck-grid">`;
       cat.decks.forEach(dk => {
+        const isPreset = !dk.id.startsWith('custom:');
+        const exportBtns = isPreset ? `<span style="float:right;margin-left:6px">` +
+          `<a href="/api/mazo/${dk.id}/csv" download title="CSV" style="color:#4ecca3;font-size:0.75em;margin-right:4px">csv</a>` +
+          `<a href="/api/mazo/${dk.id}/txt" download title="TXT" style="color:#4ecca3;font-size:0.75em">txt</a></span>` : '';
         html += `<div class="deck-btn" onclick="selectDeck('${dk.id}', this)">
-          ${dk.label} <span class="count">${dk.count}</span></div>`;
+          ${dk.label} <span class="count">${dk.count}</span>${exportBtns}</div>`;
       });
       html += '</div>';
     });
@@ -1167,9 +1174,71 @@ function showSummary(summary) {
     html += '<ul class="struggling-list">';
     summary.struggling.forEach(w => { html += `<li>${w}</li>`; });
     html += '</ul>';
+    html += `<button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="saveStrugglingAsList(${JSON.stringify(summary.struggling)})">Guardar como lista de repaso</button>`;
+    html += '<div id="save-struggling-result" style="margin-top:6px"></div>';
   }
   document.getElementById('summary-content').innerHTML = html;
   loadStats();
+}
+
+// ── Add to list from explorer ──
+async function addWordToList(word) {
+  // Check if a default "Mi lista" exists, create if not
+  const r = await fetch(API + '/api/listas');
+  const d = await r.json();
+  let listId = null;
+  let listName = 'Mi lista';
+  for (const l of d.lists) {
+    if (l.name === 'Mi lista') { listId = l.id; break; }
+  }
+  if (!listId) {
+    // Create the default list
+    const cr = await fetch(API + '/api/listas', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: listName, words: word})
+    });
+    const cd = await cr.json();
+    alert(`"${word.toUpperCase()}" agregada a nueva lista "${listName}"`);
+    loadDecks();
+    loadCustomListsManage();
+    return;
+  }
+  // Add word to existing list
+  const gr = await fetch(API + '/api/listas/' + listId);
+  if (gr.ok) {
+    const gd = await gr.json();
+    // Append word via PUT
+    const existingWords = gd.words || [];
+    if (existingWords.includes(word)) {
+      alert(`"${word.toUpperCase()}" ya está en "${listName}"`);
+      return;
+    }
+    existingWords.push(word);
+    await fetch(API + '/api/listas/' + listId, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: listName, words: existingWords.join('\n')})
+    });
+    alert(`"${word.toUpperCase()}" agregada a "${listName}" (${existingWords.length} palabras)`);
+    loadDecks();
+    loadCustomListsManage();
+  }
+}
+
+// ── Save struggling words as list ──
+async function saveStrugglingAsList(words) {
+  const el = document.getElementById('save-struggling-result');
+  const name = 'Repaso - ' + new Date().toLocaleDateString('es');
+  try {
+    const r = await fetch(API + '/api/listas', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, words: words.join('\n')})
+    });
+    const d = await r.json();
+    el.innerHTML = `<span style="color:#4ecca3">Lista "${name}" creada con ${d.valid} palabras.</span>`;
+    loadDecks();
+  } catch(e) {
+    el.innerHTML = '<span style="color:#e94560">Error guardando lista</span>';
+  }
 }
 
 // ── Custom lists ──

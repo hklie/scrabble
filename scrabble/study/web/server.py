@@ -450,6 +450,25 @@ def export_deck_csv(deck_id: str):
     )
 
 
+@app.get("/api/mazo/{deck_id}/txt")
+def export_deck_txt(deck_id: str):
+    """Export deck words as .txt download (one word per line)."""
+    from fastapi.responses import Response
+    data = get_deck_words(deck_id)
+    if isinstance(data, JSONResponse):
+        return data
+
+    header = f"# {data['label']} ({data['count']} palabras)\n"
+    header += f"# Lexicable — USA Lexico\n\n"
+    content = header + "\n".join(w["word"] for w in data["words"])
+    filename = f'mazo_{deck_id}.txt'
+    return Response(
+        content=content,
+        media_type="text/plain",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 # ── Dynamic deck word listing ──
 
 class DynamicDeckRequest(BaseModel):
@@ -498,6 +517,15 @@ def create_lista(req: CustomListRequest):
 
     return {"id": lid, "name": req.name, "valid": len(valid),
             "invalid": len(invalid), "invalid_words": invalid[:20]}
+
+
+@app.get("/api/listas/{list_id}")
+def get_lista(list_id: str):
+    if list_id not in custom_lists:
+        return JSONResponse({"error": "Lista no encontrada."}, 404)
+    lst = custom_lists[list_id]
+    return {"id": list_id, "name": lst["name"], "count": len(lst["words"]),
+            "words": lst["words"]}
 
 
 @app.delete("/api/listas/{list_id}")
