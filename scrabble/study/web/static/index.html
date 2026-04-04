@@ -3,12 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Estudio Scrabble Español</title>
+<title>Lexicable — Aprende palabras fácilmente</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
 .container { max-width: 800px; margin: 0 auto; padding: 16px; }
-h1 { color: #4ecca3; font-size: 1.5em; text-align: center; margin-bottom: 8px; }
+h1 { color: #4ecca3; font-size: 1.5em; text-align: center; margin-bottom: 4px; }
+.brand { text-align: center; margin-bottom: 16px; }
+.brand img { height: 72px; vertical-align: middle; margin-right: 14px; border-radius: 8px; }
+.brand .title { font-size: 2.2em; font-weight: bold; color: #4ecca3; vertical-align: middle; }
+.brand .subtitle { display: block; font-size: 1.05em; color: #aaa; margin-top: 4px; letter-spacing: 0.5px; }
+
+/* Info pages */
+.info-page { background: #16213e; border-radius: 8px; padding: 20px; margin: 12px 0;
+             line-height: 1.7; font-size: 0.95em; color: #ccc; }
+.info-page h2 { color: #4ecca3; margin-top: 16px; }
+.info-page h3 { color: #4ecca3; margin-top: 12px; }
+.info-page code { background: #0f3460; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+.info-page table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.info-page th, .info-page td { padding: 6px 10px; border: 1px solid #333; text-align: left; font-size: 0.85em; }
+.info-page th { background: #0f3460; color: #4ecca3; }
+.info-page ul { padding-left: 20px; }
+.info-page li { margin: 4px 0; }
+.info-meta { color: #aaa; font-size: 0.95em; }
 h2 { color: #4ecca3; font-size: 1.2em; margin: 16px 0 8px; }
 h3 { color: #aaa; font-size: 0.95em; margin: 12px 0 6px; }
 
@@ -117,12 +134,16 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
 </head>
 <body>
 <div class="container">
-  <h1>Estudio Scrabble Español</h1>
-  <div class="stats" id="stats-bar">Cargando...</div>
-
+  <div class="brand">
+    <img src="/static/logo.png" alt="USA Lexico">
+    <span class="title">Lexicable</span>
+    <span class="subtitle">Aprende palabras fácilmente</span>
+  </div>
   <div class="nav">
     <button onclick="showScreen('explorer')" id="nav-explorer">Explorador</button>
     <button onclick="showScreen('quiz-setup')" id="nav-quiz">Quiz</button>
+    <button onclick="showScreen('instrucciones')" id="nav-instrucciones">Instrucciones</button>
+    <button onclick="showScreen('about')" id="nav-about">Más Información</button>
   </div>
 
   <!-- ===== EXPLORER SCREEN ===== -->
@@ -133,10 +154,12 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
 
   <!-- ===== QUIZ SETUP SCREEN ===== -->
   <div class="screen" id="screen-quiz-setup">
+    <div class="stats" id="stats-bar">Cargando...</div>
     <h2>Modo de Quiz</h2>
     <div class="mode-grid" id="mode-grid"></div>
 
     <h2>Mazo</h2>
+    <p style="color:#aaa;font-size:0.8em;margin-bottom:8px">Nota: todos los mazos excepto "Verbos por longitud" contienen solo sustantivos, adjetivos y otras palabras no conjugadas. Los verbos conjugados se estudian por separado.</p>
     <div id="deck-list">Cargando mazos...</div>
 
     <h3>Tamaño de sesión</h3>
@@ -164,6 +187,90 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
       <button class="btn btn-primary" onclick="showScreen('quiz-setup')">Volver</button>
     </div>
   </div>
+
+  <!-- ===== INSTRUCCIONES SCREEN ===== -->
+  <div class="screen" id="screen-instrucciones">
+    <div class="info-page">
+      <h2>Instrucciones</h2>
+
+      <h3>Explorador de Palabras</h3>
+      <p>Escribe cualquier palabra en la barra de búsqueda para verificar si es válida en el léxico FISE2.
+      Para palabras válidas verás:</p>
+      <ul>
+        <li><b>Información básica:</b> longitud en fichas, valor en puntos, percentil de probabilidad</li>
+        <li><b>Ganchos:</b> letras que se pueden agregar antes (delanteros) o después (traseros) de la palabra para formar una nueva palabra válida. Incluye los 28 tipos de fichas, incluyendo dígrafos (CH, LL, RR) y la Ñ</li>
+        <li><b>Morfología:</b> prefijo, sufijo y terminación de la palabra</li>
+        <li><b>Anagramas:</b> otras palabras válidas formadas con las mismas letras</li>
+        <li><b>Transformaciones:</b> palabras formadas al cambiar una sola letra, agrupadas por posición</li>
+        <li><b>Extensiones:</b> palabras formadas al insertar una letra en cualquier posición</li>
+        <li><b>Reducciones:</b> palabras formadas al eliminar una letra</li>
+      </ul>
+
+      <h3>Modos de Quiz</h3>
+      <table>
+        <tr><th>Modo</th><th>Descripción</th></tr>
+        <tr><td><b>Repaso</b></td><td>Tarjetas de autoevaluación. Se muestra la palabra, presiona "Revelar" para ver la información completa, luego califica tu conocimiento de 0 (nulo) a 5 (fácil).</td></tr>
+        <tr><td><b>Anagrama</b></td><td>Se muestran letras desordenadas en fichas estilo Scrabble. Escribe la palabra correcta. Tienes 2 intentos antes de que se revele la respuesta.</td></tr>
+        <tr><td><b>Ganchos</b></td><td>Se muestra una palabra. Escribe las letras que se pueden enganchar antes y/o después. Se puntúa por completitud.</td></tr>
+        <tr><td><b>Patrón</b></td><td>Se muestra una palabra con ~40% de letras ocultas (las de mayor valor primero). Escribe la palabra completa.</td></tr>
+        <tr><td><b>Morfología</b></td><td>Se muestra una palabra. Identifica su prefijo y sufijo (separados por coma).</td></tr>
+        <tr><td><b>Transformación</b></td><td>Se muestra una palabra con una posición marcada. Escribe las letras de reemplazo que forman nuevas palabras válidas.</td></tr>
+        <tr><td><b>Extensión</b></td><td>Se muestra una palabra con un espacio de inserción. Escribe las letras que se pueden insertar en esa posición.</td></tr>
+        <tr><td><b>Reducción</b></td><td>Se muestra una palabra. Escribe las letras que se pueden eliminar dejando una palabra válida.</td></tr>
+      </table>
+
+      <h3>Mazos de Estudio</h3>
+      <p>Los mazos están organizados por categoría:</p>
+      <ul>
+        <li><b>Por longitud:</b> palabras de 2, 3, 4 o 5 letras</li>
+        <li><b>Patrones vocálicos:</b> palabras de 7 letras con solo 2 vocales o 2 consonantes</li>
+        <li><b>Alta probabilidad:</b> palabras más frecuentes (Top10, 4-8 letras)</li>
+        <li><b>Alta puntuación:</b> palabras de 5-6 letras con letras de alto valor</li>
+        <li><b>Por terminación:</b> palabras de 5 letras terminadas en D, L, N, R o Z</li>
+        <li><b>Verbos:</b> verbos de 3 a 8 letras</li>
+      </ul>
+
+      <h3>Repetición Espaciada (SRS)</h3>
+      <p>El sistema usa el algoritmo SM-2 para programar repasos. Las palabras que calificas con dificultad
+      aparecerán más frecuentemente. Las que dominas se espacian en intervalos crecientes (1 día, 6 días, etc.).
+      El progreso se guarda automáticamente.</p>
+      <ul>
+        <li><b>Estudiadas:</b> total de palabras que has revisado alguna vez</li>
+        <li><b>Pendientes hoy:</b> palabras que necesitan repaso según el algoritmo SRS</li>
+        <li><b>Dominadas:</b> palabras con facilidad alta y 3+ repasos correctos consecutivos</li>
+        <li><b>Repasos:</b> número total de sesiones de repaso realizadas</li>
+      </ul>
+
+      <h3>Formatos de Entrada</h3>
+      <p>En los modos de ganchos, transformación, extensión y reducción, puedes escribir las letras en varios formatos:</p>
+      <ul>
+        <li>Separadas por espacios: <code>s z t</code></li>
+        <li>Separadas por comas: <code>s, z, t</code></li>
+        <li>Concatenadas: <code>szt</code></li>
+        <li>Dígrafos y Ñ: <code>ch ll rr ñ</code></li>
+      </ul>
+      <p>En todos los modos, escribe <code>?</code> para revelar la respuesta.</p>
+    </div>
+  </div>
+
+  <!-- ===== ABOUT SCREEN ===== -->
+  <div class="screen" id="screen-about">
+    <div class="info-page" style="text-align:center">
+      <img src="/static/logo.png" alt="USA Lexico" style="height:96px;border-radius:10px;margin-bottom:16px">
+      <h2 style="font-size:1.8em;margin-top:0">Lexicable</h2>
+      <p class="info-meta" style="font-size:1.1em;margin:8px 0">Aprende palabras fácilmente</p>
+      <div style="margin:24px 0">
+        <table style="max-width:300px;margin:0 auto">
+          <tr><td style="text-align:right;padding-right:16px;color:#aaa;border:none">Versión:</td><td style="color:#4ecca3;font-weight:bold;border:none">1.0</td></tr>
+          <tr><td style="text-align:right;padding-right:16px;color:#aaa;border:none">Autor:</td><td style="color:#eee;border:none">Hector Klie</td></tr>
+          <tr><td style="text-align:right;padding-right:16px;color:#aaa;border:none">Organización:</td><td style="color:#eee;border:none">USA Lexico</td></tr>
+          <tr><td style="text-align:right;padding-right:16px;color:#aaa;border:none">Fecha:</td><td style="color:#eee;border:none">Abril, 2026</td></tr>
+        </table>
+      </div>
+      <p class="info-meta">Herramienta de estudio de palabras para Scrabble en español.<br>
+      Diseñada para el léxico FISE2 con soporte nativo de dígrafos (CH, LL, RR) y la Ñ.</p>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -171,6 +278,8 @@ const API = '';
 let selectedMode = '';
 let selectedDeck = '';
 let sessionId = '';
+let sessionModeLabel = '';
+let sessionDeckLabel = '';
 let POINT_MAP = {
   'a':1,'b':3,'c':3,'d':2,'e':1,'f':4,'g':2,'h':4,'i':1,'j':8,
   'l':1,'m':3,'n':1,'o':1,'p':3,'q':5,'r':1,'s':1,'t':1,'u':1,
@@ -182,8 +291,16 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
   document.getElementById('screen-' + name).classList.add('visible');
   document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-  if (name === 'explorer') document.getElementById('nav-explorer').classList.add('active');
-  else document.getElementById('nav-quiz').classList.add('active');
+  const navMap = {
+    'explorer': 'nav-explorer',
+    'quiz-setup': 'nav-quiz',
+    'quiz-active': 'nav-quiz',
+    'summary': 'nav-quiz',
+    'instrucciones': 'nav-instrucciones',
+    'about': 'nav-about',
+  };
+  const navId = navMap[name];
+  if (navId) document.getElementById(navId).classList.add('active');
 }
 
 // ── Stats ──
@@ -192,10 +309,10 @@ async function loadStats() {
     const r = await fetch(API + '/api/progreso');
     const d = await r.json();
     document.getElementById('stats-bar').innerHTML =
-      `<span>Estudiadas: <b>${d.total}</b></span>` +
-      `<span>Pendientes: <b>${d.due}</b></span>` +
-      `<span>Dominadas: <b>${d.mastered}</b></span>` +
-      `<span>Repasos: <b>${d.total_reviews}</b></span>`;
+      `<span title="Total de palabras estudiadas en todos los mazos">Estudiadas: <b>${d.total}</b></span>` +
+      `<span title="Palabras que necesitan repaso hoy (SRS)">Pendientes hoy: <b>${d.due}</b></span>` +
+      `<span title="Palabras con facilidad ≥2.5 y 3+ repasos correctos">Dominadas: <b>${d.mastered}</b></span>` +
+      `<span title="Sesiones de repaso totales realizadas">Repasos: <b>${d.total_reviews}</b></span>`;
   } catch(e) {
     document.getElementById('stats-bar').textContent = 'Error cargando estadísticas';
   }
@@ -254,17 +371,36 @@ async function searchWord(word) {
     html += '</div>';
     if (d.front_hooks.length) html += `<div class="hooks-list"><b>Ganchos delanteros:</b> ${d.front_hooks.join(', ')}</div>`;
     if (d.back_hooks.length) html += `<div class="hooks-list"><b>Ganchos traseros:</b> ${d.back_hooks.join(', ')}</div>`;
+
+    // Reference links for meaning
+    if (d.valid) {
+      const wd = encodeURIComponent(d.word);
+      html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid #333">';
+      html += '<span class="label">Significado:</span> ';
+      html += `<a href="https://dle.rae.es/${wd}" target="_blank" rel="noopener" style="color:#4ecca3;margin-right:12px">RAE</a>`;
+      html += `<a href="https://es.wiktionary.org/wiki/${wd}" target="_blank" rel="noopener" style="color:#4ecca3;margin-right:12px">Wikcionario</a>`;
+      html += `<a href="https://es.wikipedia.org/wiki/${wd}" target="_blank" rel="noopener" style="color:#4ecca3">Wikipedia</a>`;
+      html += '</div>';
+    }
+
     html += '</div>';
 
+    // Anagrams (inline, already in response)
+    if (d.anagram_list && d.anagram_list.length > 0) {
+      html += '<details class="transform-section"><summary>Anagramas (' + d.anagram_list.length + ')</summary><div>';
+      d.anagram_list.forEach(w => { html += `<div class="transform-item">${w.toUpperCase()}</div>`; });
+      html += '</div></details>';
+    }
+
     if (d.valid) {
-      html += '<details class="transform-section"><summary>Transformaciones</summary><div id="transforms-list">Cargando...</div></details>';
-      html += '<details class="transform-section"><summary>Extensiones</summary><div id="extensions-list">Cargando...</div></details>';
-      html += '<details class="transform-section"><summary>Reducciones</summary><div id="reductions-list">Cargando...</div></details>';
+      html += '<details class="transform-section" id="det-transforms"><summary>Transformaciones</summary><div id="transforms-list">Cargando...</div></details>';
+      html += '<details class="transform-section" id="det-extensions"><summary>Extensiones</summary><div id="extensions-list">Cargando...</div></details>';
+      html += '<details class="transform-section" id="det-reductions"><summary>Reducciones</summary><div id="reductions-list">Cargando...</div></details>';
     }
     el.innerHTML = html;
 
     if (d.valid) {
-      document.querySelector('details:nth-of-type(1)').addEventListener('toggle', async function() {
+      document.getElementById('det-transforms').addEventListener('toggle', async function() {
         if (this.open && this.querySelector('#transforms-list').textContent === 'Cargando...') {
           const t = await (await fetch(API + '/api/transformar/' + encodeURIComponent(word))).json();
           let h = `<p style="color:#aaa;font-size:0.85em">${t.count} transformaciones</p>`;
@@ -275,7 +411,7 @@ async function searchWord(word) {
           this.querySelector('#transforms-list').innerHTML = h;
         }
       });
-      document.querySelector('details:nth-of-type(2)').addEventListener('toggle', async function() {
+      document.getElementById('det-extensions').addEventListener('toggle', async function() {
         if (this.open && this.querySelector('#extensions-list').textContent === 'Cargando...') {
           const t = await (await fetch(API + '/api/extender/' + encodeURIComponent(word))).json();
           let h = `<p style="color:#aaa;font-size:0.85em">${t.count} extensiones</p>`;
@@ -286,7 +422,7 @@ async function searchWord(word) {
           this.querySelector('#extensions-list').innerHTML = h;
         }
       });
-      document.querySelector('details:nth-of-type(3)').addEventListener('toggle', async function() {
+      document.getElementById('det-reductions').addEventListener('toggle', async function() {
         if (this.open && this.querySelector('#reductions-list').textContent === 'Cargando...') {
           const t = await (await fetch(API + '/api/reducir/' + encodeURIComponent(word))).json();
           let h = `<p style="color:#aaa;font-size:0.85em">${t.count} reducciones</p>`;
@@ -375,6 +511,8 @@ async function startQuiz() {
     const d = await r.json();
     if (d.error) { alert(d.error); return; }
     sessionId = d.session_id;
+    sessionModeLabel = d.mode_label || '';
+    sessionDeckLabel = d.deck_label || '';
     showScreen('quiz-active');
     renderCard(d.card);
   } catch(e) { alert('Error iniciando quiz'); }
@@ -384,7 +522,8 @@ function renderCard(card) {
   const el = document.getElementById('quiz-content');
   const pct = ((card.index) / card.total * 100);
   document.getElementById('quiz-progress').style.width = pct + '%';
-  document.getElementById('quiz-counter').textContent = `Tarjeta ${card.index + 1} de ${card.total}`;
+  document.getElementById('quiz-counter').textContent =
+    `${sessionModeLabel} — ${sessionDeckLabel}  |  Tarjeta ${card.index + 1} de ${card.total}`;
 
   let html = '<div class="quiz-prompt">';
 
@@ -404,8 +543,9 @@ function renderCard(card) {
   } else if (card.prompt_type === 'anagram') {
     html += renderTiles(card.scrambled);
     html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `<div class="hint">Escribe todas las palabras válidas con estas letras (separadas por comas o espacios)</div>`;
     html += `</div>`;
-    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Tu respuesta..." autocomplete="off"></div>`;
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="palabra1, palabra2, ..." autocomplete="off"></div>`;
     html += `<div class="quiz-actions">`;
     html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
     html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
@@ -414,14 +554,27 @@ function renderCard(card) {
     html += `<div class="big">${card.word_display}</div>`;
     html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
     html += `</div>`;
-    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Ganchos (letras separadas por espacios)..." autocomplete="off"></div>`;
-    html += `<div class="quiz-actions">`;
-    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
-    html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+    if (!card.has_front && !card.has_back) {
+      html += `<p style="color:#aaa;text-align:center">Esta palabra no tiene ganchos.</p>`;
+      html += `<div class="quiz-actions"><button class="btn btn-primary" onclick="nextCard()">Siguiente</button></div>`;
+    } else {
+      if (card.has_front) {
+        html += `<div style="margin:8px 0"><label style="color:#aaa;font-size:0.85em">Ganchos delanteros — letras que van ANTES: [_]${card.word_display}</label>`;
+        html += `<input type="text" id="hooks-front" placeholder="ej: s t r" autocomplete="off"></div>`;
+      }
+      if (card.has_back) {
+        html += `<div style="margin:8px 0"><label style="color:#aaa;font-size:0.85em">Ganchos traseros — letras que van DESPUÉS: ${card.word_display}[_]</label>`;
+        html += `<input type="text" id="hooks-back" placeholder="ej: a s" autocomplete="off"></div>`;
+      }
+      html += `<div class="quiz-actions">`;
+      html += `<button class="btn btn-primary" onclick="submitHooks()">Enviar</button>`;
+      html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
+    }
 
   } else if (card.prompt_type === 'pattern') {
     html += renderTiles(card.blanked);
-    html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `<div class="hint">${card.length} letras</div>`;
+    html += `<div class="hint" style="color:#4ecca3;font-size:1em"><b>Pista: ${card.value} puntos</b></div>`;
     html += `</div>`;
     html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="Palabra completa..." autocomplete="off"></div>`;
     html += `<div class="quiz-actions">`;
@@ -432,9 +585,16 @@ function renderCard(card) {
     html += `<div class="big">${card.word_display}</div>`;
     html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
     html += `</div>`;
-    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="prefijo, sufijo (separados por coma)..." autocomplete="off"></div>`;
+    if (card.has_prefix) {
+      html += `<div style="margin:8px 0"><label style="color:#aaa;font-size:0.85em">Prefijo (ej: re, des, bi, tri):</label>`;
+      html += `<input type="text" id="morph-prefix" placeholder="prefijo..." autocomplete="off"></div>`;
+    }
+    if (card.has_suffix) {
+      html += `<div style="margin:8px 0"><label style="color:#aaa;font-size:0.85em">Sufijo (ej: ción, dor, ble, era, al):</label>`;
+      html += `<input type="text" id="morph-suffix" placeholder="sufijo..." autocomplete="off"></div>`;
+    }
     html += `<div class="quiz-actions">`;
-    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
+    html += `<button class="btn btn-primary" onclick="submitMorphology()">Enviar</button>`;
     html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
 
   } else if (card.prompt_type === 'transformation') {
@@ -475,11 +635,57 @@ function renderCard(card) {
       if (e.key === 'Enter') submitFromInput();
     });
   }
+  // Hooks: focus first available input, Enter on last submits
+  const hf = document.getElementById('hooks-front');
+  const hb = document.getElementById('hooks-back');
+  if (hf) {
+    hf.focus();
+    hf.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { if (hb) hb.focus(); else submitHooks(); }
+    });
+  }
+  if (hb) {
+    if (!hf) hb.focus();
+    hb.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') submitHooks();
+    });
+  }
+  // Morphology: focus first available input, Enter on last submits
+  const mp = document.getElementById('morph-prefix');
+  const ms = document.getElementById('morph-suffix');
+  if (mp) {
+    mp.focus();
+    mp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { if (ms) ms.focus(); else submitMorphology(); }
+    });
+  }
+  if (ms) {
+    if (!mp) ms.focus();
+    ms.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') submitMorphology();
+    });
+  }
 }
 
 function submitFromInput() {
   const inp = document.getElementById('quiz-input');
   if (inp) submitAnswer(inp.value);
+}
+
+function submitHooks() {
+  const front = document.getElementById('hooks-front');
+  const back = document.getElementById('hooks-back');
+  const frontVal = front ? front.value.trim() : '';
+  const backVal = back ? back.value.trim() : '';
+  submitAnswer(frontVal + '|' + backVal);
+}
+
+function submitMorphology() {
+  const pre = document.getElementById('morph-prefix');
+  const suf = document.getElementById('morph-suffix');
+  const preVal = pre ? pre.value.trim() : '';
+  const sufVal = suf ? suf.value.trim() : '';
+  submitAnswer(preVal + ',' + sufVal);
 }
 
 async function submitAnswer(answer) {
@@ -495,7 +701,9 @@ async function submitAnswer(answer) {
       const el = document.getElementById('quiz-content');
       const inp = document.getElementById('quiz-input');
       if (inp) { inp.value = ''; inp.focus(); }
-      el.insertAdjacentHTML('beforeend', '<div class="result-fail">Incorrecto — intenta de nuevo</div>');
+      let msg = 'Incorrecto — intenta de nuevo';
+      if (d.hint) msg = d.hint + ' Intenta de nuevo.';
+      el.insertAdjacentHTML('beforeend', `<div class="result-fail">${msg}</div>`);
       return;
     }
 
@@ -532,6 +740,46 @@ function showResult(d) {
       html += `<div class="hooks-list"><b>Ganchos traseros:</b> ${rv.back_hooks.join(', ')}</div>`;
     if (rv.score !== undefined)
       html += `<div style="color:#aaa;font-size:0.85em">Puntuación: ${rv.score}%</div>`;
+    if (rv.note)
+      html += `<div style="color:#4ecca3;font-size:0.85em;margin-top:4px">${rv.note}</div>`;
+    if (rv.morphology_details) {
+      html += '<div style="margin-top:6px;font-size:0.9em">';
+      rv.morphology_details.forEach(d => {
+        const color = d.includes('✓') ? '#4ecca3' : '#e94560';
+        html += `<div style="color:${color}">${d}</div>`;
+      });
+      html += '</div>';
+    }
+
+    // Reference links
+    const rvw = encodeURIComponent(rv.word.toLowerCase());
+    html += '<div style="margin-top:6px;font-size:0.85em">';
+    html += `<a href="https://dle.rae.es/${rvw}" target="_blank" rel="noopener" style="color:#4ecca3;margin-right:10px">RAE</a>`;
+    html += `<a href="https://es.wiktionary.org/wiki/${rvw}" target="_blank" rel="noopener" style="color:#4ecca3;margin-right:10px">Wikcionario</a>`;
+    html += `<a href="https://es.wikipedia.org/wiki/${rvw}" target="_blank" rel="noopener" style="color:#4ecca3">Wikipedia</a>`;
+    html += '</div>';
+
+    // Anagram results breakdown
+    if (rv.correct_words && rv.correct_words.length > 0) {
+      html += '<div style="margin-top:8px;color:#4ecca3"><b>Correctas:</b> ';
+      html += rv.correct_words.map(w => w.toUpperCase()).join(', ');
+      html += '</div>';
+    }
+    if (rv.wrong_words && rv.wrong_words.length > 0) {
+      html += '<div style="margin-top:4px;color:#e94560"><b>Incorrectas:</b> ';
+      html += rv.wrong_words.map(w => w.toUpperCase()).join(', ');
+      html += '</div>';
+    }
+    if (rv.missed_words && rv.missed_words.length > 0) {
+      html += '<div style="margin-top:4px;color:#aaa"><b>Faltaron:</b> ';
+      html += rv.missed_words.map(w => w.toUpperCase()).join(', ');
+      html += '</div>';
+    }
+    if (rv.all_anagrams && rv.all_anagrams.length > 0 && !rv.correct_words) {
+      html += '<div style="margin-top:8px"><span class="label">Anagramas válidos:</span> ';
+      html += rv.all_anagrams.map(w => `<b>${w.toUpperCase()}</b>`).join(', ');
+      html += '</div>';
+    }
 
     // Transform details
     if (rv.changes) {

@@ -1,6 +1,6 @@
 # TODO — Estudio: Zyzzyva / Aerolith para Scrabble en Español
 
-> **Vision:** La herramienta definitiva de estudio de palabras para jugadores hispanohablantes de Scrabble — el equivalente de Zyzzyva y Aerolith, diseñada para el léxico FISE2, dígrafos españoles (CH, LL, RR, Ñ) y el alfabeto de 28 fichas. Plataforma web accesible desde cualquier dispositivo.
+> **Vision:** La herramienta definitiva de estudio de palabras para jugadores hispanohablantes de Scrabble — el equivalente de Zyzzyva y Aerolith, diseñada para el léxico FISE2, dígrafos españoles (CH, LL, RR), la Ñ y el alfabeto de 28 fichas. Plataforma web accesible desde cualquier dispositivo.
 >
 > Toda la interfaz de usuario debe estar en **español**.
 
@@ -36,7 +36,7 @@ Todo funciona via CLI (`python -m study.quiz`):
 | Transformaciones | No | No | **Sí (cambiar/insertar/eliminar — único)** |
 | Estudio por grupo | No | No | **Sí (único)** |
 | Estudio de verbos por tipo | No | No | **Sí (único)** |
-| Soporte de dígrafos españoles | No | No | **Sí (CH/LL/RR/Ñ nativos)** |
+| Soporte de dígrafos y Ñ | No | No | **Sí (CH/LL/RR + Ñ nativos)** |
 | Acceso web | No (escritorio) | Sí | Sí |
 | Responsive móvil | No | Parcial | Sí (mobile-first) |
 | Idioma | Inglés | Inglés | **Español** |
@@ -144,7 +144,7 @@ scrabble/web/
 - **Tamaño de sesión** (10–50)
 - **Área de tarjetas**:
   - Palabra grande estilo ficha de Scrabble (fondo beige, subíndice de puntos)
-  - Input: campo de texto + teclado en pantalla para móvil (CH, LL, RR, Ñ)
+  - Input: campo de texto + teclado en pantalla para móvil (CH, LL, RR) y Ñ
   - Botones de calificación (0–5): Nulo / Error / Difícil / Correcto / Bien / Fácil
   - Panel de revelación: ganchos, prefijo, sufijo, terminación, tipo, anagramas, puntos
 - **Barra de progreso** + resumen de sesión
@@ -172,12 +172,12 @@ Cada opción del explorador y cada modo de quiz debe probarse y pulirse para ase
 | # | Tarea | Estado |
 |---|-------|--------|
 | B2.1 | Validación de palabra: badge válida/no válida, puntos, longitud, percentil | |
-| B2.2 | Ganchos delanteros y traseros: formato legible, incluye dígrafos (CH, LL, RR, Ñ) | |
+| B2.2 | Ganchos delanteros y traseros: formato legible, incluye dígrafos (CH, LL, RR) y Ñ | |
 | B2.3 | Morfología: prefijo, sufijo, terminación mostrados correctamente | |
 | B2.4 | Transformaciones: expandible, agrupado por posición, conteo correcto | |
 | B2.5 | Extensiones: expandible, agrupado por posición, conteo correcto | |
 | B2.6 | Reducciones: expandible, lista con posición y palabra resultante | |
-| B2.7 | Palabras con dígrafos: verificar que CH, LL, RR, Ñ se muestran y procesan correctamente | |
+| B2.7 | Palabras con dígrafos y Ñ: verificar que CH, LL, RR y Ñ se muestran y procesan correctamente | |
 | B2.8 | Palabras no válidas: mensaje claro "NO VÁLIDA", sin secciones de transformaciones | |
 
 **Quiz — verificar cada modo:**
@@ -260,7 +260,7 @@ El usuario debe poder crear sus propias listas de palabras y personalizar qué p
 | # | Tarea | Esfuerzo |
 |---|-------|----------|
 | 10 | Diseño responsive mobile-first + renderizado de fichas Scrabble | Medio |
-| 11 | Teclado en pantalla (con CH, LL, RR, Ñ) | Pequeño |
+| 11 | Teclado en pantalla (con dígrafos CH, LL, RR y la Ñ) | Pequeño |
 
 ---
 

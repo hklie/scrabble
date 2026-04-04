@@ -37,7 +37,7 @@ from study.quiz import (_scramble, _blank_tokens, _parse_hook_input,
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
-app = FastAPI(title="Estudio Scrabble Español")
+app = FastAPI(title="Lexicable — Aprende palabras fácilmente")
 
 # ── Global state (loaded at startup) ──
 
@@ -65,6 +65,9 @@ def startup():
     print(f"{len(all_cards)} words, {len(all_verbs)} verbs loaded.")
     progress = load_progress()
     print(f"Progress: {len(progress)} words tracked.")
+    print("Building anagram index...", end=" ", flush=True)
+    _build_anagram_index()
+    print(f"{len(_anagram_index)} anagram groups.")
 
 
 # ── Pydantic models ──
@@ -98,6 +101,56 @@ class QuizSession:
     attempt: int = 0
 
 
+# ── Helpers ──
+
+def _resolve_suffix(word, pattern):
+    """Resolve a suffix pattern like 'enV' to the actual suffix 'ena' for a word."""
+    if not pattern or not word:
+        return pattern
+    result = []
+    wi = len(word) - 1  # walk backwards through the word
+    for pi in range(len(pattern) - 1, -1, -1):
+        ch = pattern[pi]
+        if ch == "V":
+            result.append(word[wi] if wi >= 0 else "?")
+            wi -= 1
+        elif ch == "C":
+            result.append(word[wi] if wi >= 0 else "?")
+            wi -= 1
+        else:
+            result.append(ch)
+            wi -= 1
+    return "".join(reversed(result))
+
+
+def _resolve_prefix(word, pattern):
+    """Resolve a prefix pattern like 'reC' to the actual prefix for a word."""
+    if not pattern or not word:
+        return pattern
+    result = []
+    for i, ch in enumerate(pattern):
+        if ch in ("V", "C"):
+            result.append(word[i] if i < len(word) else "?")
+        else:
+            result.append(ch)
+    return "".join(result)
+
+
+# Anagram index: sorted_tokens_key -> list of words
+_anagram_index = {}
+
+
+def _build_anagram_index():
+    """Build index for fast anagram lookup."""
+    global _anagram_index
+    for c in all_cards:
+        key = tuple(sorted(c["tokens"]))
+        _anagram_index.setdefault(key, []).append(c["word"])
+    for v in all_verbs:
+        key = tuple(sorted(v["tokens"]))
+        _anagram_index.setdefault(key, []).append(v["word"])
+
+
 # ── Word explorer endpoints ──
 
 @app.get("/api/validar/{word}")
@@ -114,16 +167,23 @@ def validar_word(word: str):
         "value": value,
     }
 
+    # Anagram list
+    anagram_key = tuple(sorted(tokens))
+    anagram_list = [w for w in _anagram_index.get(anagram_key, []) if w != word]
+
     card = card_lookup.get(word)
     if card:
+        raw_suffix = card.get("suffix", "")
+        raw_prefix = card.get("prefix", "")
         result.update({
             "percentile": card.get("percentile", ""),
-            "prefix": card.get("prefix", ""),
-            "suffix": card.get("suffix", ""),
+            "prefix": _resolve_prefix(word, raw_prefix),
+            "suffix": _resolve_suffix(word, raw_suffix),
             "ending": card.get("ending", ""),
             "front_hooks": card.get("front_hooks", []),
             "back_hooks": card.get("back_hooks", []),
-            "anagrams": card.get("anagrams", 0),
+            "anagrams": len(anagram_list),
+            "anagram_list": anagram_list,
             "verb_type": card.get("verb_type", ""),
         })
     else:
@@ -131,7 +191,9 @@ def validar_word(word: str):
             "percentile": "", "prefix": "", "suffix": "",
             "ending": word[-1] if word else "",
             "front_hooks": [], "back_hooks": [],
-            "anagrams": 0, "verb_type": "",
+            "anagrams": len(anagram_list),
+            "anagram_list": anagram_list,
+            "verb_type": "",
         })
 
     return result
@@ -172,7 +234,7 @@ def listar_mazos():
     categories = []
 
     # Words by length
-    cat = {"name": "Palabras por longitud", "decks": []}
+    cat = {"name": "Palabras por longitud (sin verbos conjugados)", "decks": []}
     for name in ["words-2", "words-3", "words-4", "words-5"]:
         cat["decks"].append({
             "id": name, "label": WORD_PRESETS[name],
@@ -374,14 +436,15 @@ def _generate_card_prompt(session, index):
 
 def _build_reveal(card):
     """Build reveal data for a card."""
+    word = card["word"]
     return {
-        "word": card["word"].upper(),
+        "word": word.upper(),
         "length": card["length"],
         "value": card["value"],
         "front_hooks": card.get("front_hooks", []),
         "back_hooks": card.get("back_hooks", []),
-        "prefix": card.get("prefix", ""),
-        "suffix": card.get("suffix", ""),
+        "prefix": _resolve_prefix(word, card.get("prefix", "")),
+        "suffix": _resolve_suffix(word, card.get("suffix", "")),
         "ending": card.get("ending", ""),
         "anagrams": card.get("anagrams", 0),
         "verb_type": card.get("verb_type", ""),
@@ -391,13 +454,22 @@ def _build_reveal(card):
 @app.post("/api/quiz/iniciar")
 def iniciar_quiz(req: QuizStartRequest):
     pool_cards = _resolve_deck(req.deck, req.min_length, req.max_length)
+
+    # Filter pool for mode-specific requirements
+    if req.mode == "hooks":
+        pool_cards = [c for c in pool_cards
+                      if c.get("front_hooks") or c.get("back_hooks")]
+    elif req.mode == "morphology":
+        pool_cards = [c for c in pool_cards
+                      if c.get("prefix") or c.get("suffix")]
+
     pool = [c["word"] for c in pool_cards]
     session_words = build_session(progress, pool, session_size=req.size)
     pool_lookup = {c["word"]: c for c in pool_cards}
     session_cards = [pool_lookup[w] for w in session_words if w in pool_lookup]
 
     if not session_cards:
-        return JSONResponse({"error": "No hay tarjetas disponibles."}, 400)
+        return JSONResponse({"error": "No hay tarjetas disponibles para este modo y mazo."}, 400)
 
     sid = str(uuid.uuid4())[:8]
     session = QuizSession(
@@ -405,8 +477,26 @@ def iniciar_quiz(req: QuizStartRequest):
     )
     sessions[sid] = session
 
+    # Resolve deck label for display
+    all_presets = {}
+    all_presets.update(WORD_PRESETS)
+    all_presets.update(VERB_PRESETS)
+    deck_label = all_presets.get(req.deck, req.deck or "Personalizado")
+
+    # Resolve mode label
+    mode_labels = {
+        "review": "Repaso", "anagram": "Anagrama", "hooks": "Ganchos",
+        "pattern": "Patrón", "morphology": "Morfología",
+        "transformation": "Transformación", "extension": "Extensión",
+        "reduction": "Reducción",
+    }
+    mode_label = mode_labels.get(req.mode, req.mode)
+
     prompt = _generate_card_prompt(session, 0)
-    return {"session_id": sid, "total": len(session_cards), "card": prompt}
+    return {
+        "session_id": sid, "total": len(session_cards), "card": prompt,
+        "mode_label": mode_label, "deck_label": deck_label,
+    }
 
 
 @app.get("/api/quiz/{session_id}/tarjeta")
@@ -442,56 +532,133 @@ def responder(session_id: str, req: AnswerRequest):
                                   correct=False, skipped=True)
 
     if mode == "anagram":
-        answer_tokens = tokenize_word(answer)
-        correct = (sorted(answer_tokens) == sorted(tokens)
-                   and answer_tokens == tokens)
-        if correct:
-            quality = 5 if session.attempt == 0 else 3
-            return _apply_and_advance(session, card, quality, reveal_data,
-                                      correct=True)
-        else:
-            session.attempt += 1
-            if session.attempt >= 2:
-                return _apply_and_advance(session, card, 1, reveal_data,
-                                          correct=False)
-            return {"correct": False, "can_retry": True}
+        # User submits all anagrams they can find (comma or space separated)
+        given_words = set()
+        for part in answer.replace(",", " ").split():
+            w = part.strip().lower()
+            if w:
+                given_words.add(w)
 
-    elif mode == "hooks":
-        given = _parse_hook_input(answer)
-        front = set(card.get("front_hooks", []))
-        back = set(card.get("back_hooks", []))
-        combined = front | back
-        score = _hook_score(given, combined)
+        # Get all valid anagrams
+        anagram_key = tuple(sorted(tokens))
+        all_anagrams = set(_anagram_index.get(anagram_key, []))
+        reveal_data["all_anagrams"] = sorted(all_anagrams)
+
+        # Classify each answer
+        correct_words = []
+        wrong_words = []
+        for w in given_words:
+            if w in all_anagrams:
+                correct_words.append(w)
+            else:
+                wrong_words.append(w)
+        missed_words = sorted(all_anagrams - set(correct_words))
+
+        # Score by fraction found (penalize wrong answers)
+        if all_anagrams:
+            score = max(0, (len(correct_words) - 0.5 * len(wrong_words))) / len(all_anagrams)
+            score = min(1.0, score)
+        else:
+            score = 1.0
+
         quality = _quality_from_score(score)
         reveal_data["score"] = round(score * 100)
+        reveal_data["correct_words"] = sorted(correct_words)
+        reveal_data["wrong_words"] = sorted(wrong_words)
+        reveal_data["missed_words"] = missed_words
+
+        return _apply_and_advance(session, card, quality, reveal_data,
+                                  correct=quality >= 3)
+
+    elif mode == "hooks":
+        # Answer format: "front_letters|back_letters" (pipe-separated)
+        parts = answer.split("|")
+        front_answer = parts[0].strip() if len(parts) > 0 else ""
+        back_answer = parts[1].strip() if len(parts) > 1 else ""
+
+        front_actual = set(card.get("front_hooks", []))
+        back_actual = set(card.get("back_hooks", []))
+
+        scores = []
+        if front_actual:
+            front_given = _parse_hook_input(front_answer) if front_answer else set()
+            scores.append(_hook_score(front_given, front_actual))
+        if back_actual:
+            back_given = _parse_hook_input(back_answer) if back_answer else set()
+            scores.append(_hook_score(back_given, back_actual))
+
+        avg_score = sum(scores) / len(scores) if scores else 0
+        quality = _quality_from_score(avg_score)
+        reveal_data["score"] = round(avg_score * 100)
         return _apply_and_advance(session, card, quality, reveal_data,
                                   correct=quality >= 3)
 
     elif mode == "pattern":
         answer_tokens = tokenize_word(answer)
-        correct = answer_tokens == tokens
-        if correct:
+        cs = session.card_states.get(idx, {})
+        blanked = cs.get("blanked", [])
+        hidden = cs.get("hidden", set())
+
+        # Check: same length, visible letters match, valid word, same points
+        answer_value = sum(INTERNAL_POINTS.get(t, 0) for t in answer_tokens)
+        card_value = card["value"]
+        pattern_match = (
+            len(answer_tokens) == len(tokens)
+            and all(answer_tokens[j] == tokens[j]
+                    for j in range(len(tokens)) if j not in hidden)
+            and _word_in_trie(trie, answer_tokens)
+            and answer_value == card_value
+        )
+        exact_match = answer_tokens == tokens
+
+        if exact_match or pattern_match:
             quality = 5 if session.attempt == 0 else 3
+            if not exact_match:
+                # Also show the original word
+                reveal_data["note"] = f"Tu respuesta ({answer.upper()}) es válida. La palabra original era {card['word'].upper()}."
             return _apply_and_advance(session, card, quality, reveal_data,
                                       correct=True)
         else:
             session.attempt += 1
+            # Feedback
+            if len(answer_tokens) != len(tokens):
+                hint = f"La palabra debe tener {len(tokens)} fichas."
+            elif not _word_in_trie(trie, answer_tokens):
+                hint = f"'{answer.upper()}' no es una palabra válida."
+            elif answer_value != card_value:
+                hint = f"'{answer.upper()}' vale {answer_value} pts, no {card_value}."
+            else:
+                hint = "Las letras visibles no coinciden con el patrón."
             if session.attempt >= 2:
                 return _apply_and_advance(session, card, 1, reveal_data,
                                           correct=False)
-            return {"correct": False, "can_retry": True}
+            return {"correct": False, "can_retry": True, "hint": hint}
 
     elif mode == "morphology":
         parts = [p.strip() for p in answer.split(",")]
         prefix_ans = parts[0] if len(parts) > 0 else ""
         suffix_ans = parts[1] if len(parts) > 1 else ""
+        word = card["word"]
+
         scores = []
+        details = []
         if card.get("prefix"):
-            scores.append(1.0 if prefix_ans == card["prefix"] else 0.0)
+            raw = card["prefix"]
+            resolved = _resolve_prefix(word, raw)
+            ok = prefix_ans in (raw, resolved)
+            scores.append(1.0 if ok else 0.0)
+            details.append(f"Prefijo: {resolved}" + (" ✓" if ok else " ✗"))
         if card.get("suffix"):
-            scores.append(1.0 if suffix_ans == card["suffix"] else 0.0)
+            raw = card["suffix"]
+            resolved = _resolve_suffix(word, raw)
+            ok = suffix_ans in (raw, resolved)
+            scores.append(1.0 if ok else 0.0)
+            details.append(f"Sufijo: {resolved}" + (" ✓" if ok else " ✗"))
+
         avg = sum(scores) / len(scores) if scores else 0
         quality = _quality_from_score(avg)
+        reveal_data["morphology_details"] = details
+        reveal_data["score"] = round(avg * 100)
         return _apply_and_advance(session, card, quality, reveal_data,
                                   correct=quality >= 3)
 

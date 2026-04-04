@@ -150,7 +150,7 @@ El quiz de ganchos acepta multiples formatos:
 - Separados por espacios: `s z t`
 - Separados por comas: `s, z, t`
 - Concatenados: `szt`
-- Digrafos: `ch ll rr ñ`
+- Dígrafos y Ñ: `ch ll rr ñ`
 
 ## Scripts de Generacion de Listas
 

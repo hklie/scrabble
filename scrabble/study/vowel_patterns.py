@@ -25,7 +25,7 @@ VOWELS = {"a", "e", "i", "o", "u", "á", "é", "í", "ó", "ú", "ü"}
 TARGET_LEN = 7
 
 
-DIGRAPH_CODES = {"1", "2", "3", "4"}  # ch, ll, rr, ñ — all consonants
+DIGRAPH_CODES = {"1", "2", "3", "4"}  # ch, ll, rr (digraphs) + ñ — all consonants
 
 
 def is_vowel(token):

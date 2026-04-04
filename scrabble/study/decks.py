@@ -204,34 +204,34 @@ def filter_cards(cards, *, min_length=2, max_length=15,
 # Words (non-verbs) presets
 WORD_PRESETS = {
     # By length
-    "words-2":       "2-letter words",
-    "words-3":       "3-letter words",
-    "words-4":       "4-letter words",
-    "words-5":       "5-letter words",
+    "words-2":       "Palabras de 2 letras",
+    "words-3":       "Palabras de 3 letras",
+    "words-4":       "Palabras de 4 letras",
+    "words-5":       "Palabras de 5 letras",
     # Vowel patterns (7-letter)
-    "7L-2vowels":    "7-letter words with only 2 vowels",
-    "7L-2cons":      "7-letter words with only 2 consonants",
+    "7L-2vowels":    "7 letras con solo 2 vocales",
+    "7L-2cons":      "7 letras con solo 2 consonantes",
     # High probability
-    "high-prob":     "High probability words (Top10, 4-8 letters)",
+    "high-prob":     "Alta probabilidad (Top10, 4-8 letras)",
     # High scoring letters (tier 3+4)
-    "scoring-5":     "5-letter words with high-scoring letters",
-    "scoring-6":     "6-letter words with high-scoring letters",
+    "scoring-5":     "5 letras con fichas de alto valor",
+    "scoring-6":     "6 letras con fichas de alto valor",
     # 5-letter by ending
-    "5L-end-d":      "5-letter words ending in D",
-    "5L-end-l":      "5-letter words ending in L",
-    "5L-end-n":      "5-letter words ending in N",
-    "5L-end-r":      "5-letter words ending in R",
-    "5L-end-z":      "5-letter words ending in Z",
+    "5L-end-d":      "5 letras terminadas en D",
+    "5L-end-l":      "5 letras terminadas en L",
+    "5L-end-n":      "5 letras terminadas en N",
+    "5L-end-r":      "5 letras terminadas en R",
+    "5L-end-z":      "5 letras terminadas en Z",
 }
 
 # Verb presets
 VERB_PRESETS = {
-    "verbs-3":  "3-letter verbs (5)",
-    "verbs-4":  "4-letter verbs (44)",
-    "verbs-5":  "5-letter verbs (484)",
-    "verbs-6":  "6-letter verbs (1203)",
-    "verbs-7":  "7-letter verbs (1945)",
-    "verbs-8":  "8-letter verbs (2600)",
+    "verbs-3":  "Verbos de 3 letras",
+    "verbs-4":  "Verbos de 4 letras",
+    "verbs-5":  "Verbos de 5 letras",
+    "verbs-6":  "Verbos de 6 letras",
+    "verbs-7":  "Verbos de 7 letras",
+    "verbs-8":  "Verbos de 8 letras",
 }
 
 _WORD_PRESET_FILTERS = {

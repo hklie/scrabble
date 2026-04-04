@@ -11,24 +11,15 @@ from config import (
     OCURRENCES,
     SCRABBLE_POINTS,
     DIGRAPH_MAP,
+    INTERNAL_POINTS,
 )
+from preprocessing import tokenize_word
 
 # === Tokenization & Utilities ===
 
-def tokenize_word(word):
-    tokens = []
-    i = 0
-    while i < len(word):
-        if word[i] in DIGRAPH_MAP:
-            tokens.append(DIGRAPH_MAP[word[i]])
-        else:
-            tokens.append(word[i])
-        i += 1
-    return tokens
-
 def compute_scrabble_score(word):
     tokens = tokenize_word(word)
-    return sum(SCRABBLE_POINTS.get(ch, 0) for ch in tokens)
+    return sum(INTERNAL_POINTS.get(ch, 0) for ch in tokens)
 
 def compute_letter_probabilities(words):
     all_letters = []

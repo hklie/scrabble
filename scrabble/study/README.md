@@ -150,7 +150,7 @@ The hook quiz accepts multiple formats:
 - Space-separated: `s z t`
 - Comma-separated: `s, z, t`
 - Concatenated: `szt`
-- Digraphs: `ch ll rr ñ`
+- Digraphs and Ñ: `ch ll rr ñ`
 
 ## Word List Generation Scripts
 
