@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lexicable — Aprende palabras fácilmente</title>
+<title>Lexicable — Aprende navegando en el universo de las palabras</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
@@ -144,7 +144,7 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
   <div class="brand">
     <img src="/static/logo.png" alt="USA Lexico">
     <span class="title">Lexicable</span>
-    <span class="subtitle">Aprende palabras fácilmente</span>
+    <span class="subtitle">Aprende navegando en el universo de las palabras</span>
   </div>
   <div class="nav">
     <button onclick="showScreen('explorer')" id="nav-explorer">Explorador</button>
@@ -157,6 +157,7 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
   <!-- ===== EXPLORER SCREEN ===== -->
   <div class="screen" id="screen-explorer">
     <input type="text" id="search-input" placeholder="Escribe una palabra..." autofocus>
+    <div id="recent-searches" style="margin:6px 0;font-size:0.8em"></div>
     <div id="search-results"></div>
   </div>
 
@@ -170,6 +171,7 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
     <h2>Mazo</h2>
     <p style="color:#aaa;font-size:0.8em;margin-bottom:8px">Nota: todos los mazos excepto "Verbos por longitud" contienen solo sustantivos, adjetivos y otras palabras no conjugadas. Los verbos conjugados se estudian por separado.</p>
     <div id="deck-list">Cargando mazos...</div>
+    <div id="deck-contents" style="display:none;margin:12px 0"></div>
 
     <h3>Tamaño de sesión</h3>
     <div style="display:flex;align-items:center;gap:10px;margin:8px 0">
@@ -276,7 +278,7 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
     <div class="info-page" style="text-align:center">
       <img src="/static/logo.png" alt="USA Lexico" style="height:96px;border-radius:10px;margin-bottom:16px">
       <h2 style="font-size:1.8em;margin-top:0">Lexicable</h2>
-      <p class="info-meta" style="font-size:1.1em;margin:8px 0">Aprende palabras fácilmente</p>
+      <p class="info-meta" style="font-size:1.1em;margin:8px 0">Aprende navegando en el universo de las palabras</p>
       <div style="margin:24px 0">
         <table style="max-width:300px;margin:0 auto">
           <tr><td style="text-align:right;padding-right:16px;color:#aaa;border:none">Versión:</td><td style="color:#4ecca3;font-weight:bold;border:none">1.0</td></tr>
@@ -471,6 +473,36 @@ function renderTiles(letters) {
 }
 
 // ── Explorer ──
+const MAX_RECENT = 20;
+function getRecentSearches() {
+  try { return JSON.parse(localStorage.getItem('recentSearches') || '[]'); }
+  catch { return []; }
+}
+function addRecentSearch(word) {
+  let recent = getRecentSearches().filter(w => w !== word);
+  recent.unshift(word);
+  if (recent.length > MAX_RECENT) recent = recent.slice(0, MAX_RECENT);
+  localStorage.setItem('recentSearches', JSON.stringify(recent));
+  renderRecentSearches();
+}
+function renderRecentSearches() {
+  const recent = getRecentSearches();
+  const el = document.getElementById('recent-searches');
+  if (!recent.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<span style="color:#555">Recientes: </span>' +
+    recent.map(w => `<span style="color:#4ecca3;cursor:pointer;margin:0 4px" onclick="searchFromRecent('${w}')">${w}</span>`).join('') +
+    ` <span style="color:#555;cursor:pointer;margin-left:8px" onclick="clearRecent()">[borrar]</span>`;
+}
+function searchFromRecent(word) {
+  document.getElementById('search-input').value = word;
+  searchWord(word);
+}
+function clearRecent() {
+  localStorage.removeItem('recentSearches');
+  renderRecentSearches();
+}
+renderRecentSearches();
+
 let searchTimer = null;
 document.getElementById('search-input').addEventListener('input', function() {
   clearTimeout(searchTimer);
@@ -489,6 +521,7 @@ async function searchWord(word) {
   try {
     const r = await fetch(API + '/api/validar/' + encodeURIComponent(word));
     const d = await r.json();
+    addRecentSearch(d.word);
     let html = '<div class="word-info">';
     html += `<span class="badge ${d.valid ? 'badge-valid' : 'badge-invalid'}">${d.valid ? 'VÁLIDA' : 'NO VÁLIDA'}</span>`;
     html += `<span style="font-size:1.3em;font-weight:bold;margin-left:8px">${d.word.toUpperCase()}</span>`;
@@ -610,6 +643,8 @@ function selectMode(id, el) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   checkStartReady();
+  const dc = document.getElementById('deck-contents');
+  if (dc) dc.style.display = 'none';
 }
 
 async function loadDecks() {
@@ -636,6 +671,68 @@ function selectDeck(id, el) {
   document.querySelectorAll('.deck-btn').forEach(b => b.style.borderColor = '#333');
   el.style.borderColor = '#4ecca3';
   checkStartReady();
+  // If no mode selected, show deck contents
+  if (!selectedMode) {
+    showDeckContents(id);
+  }
+}
+
+async function showDeckContents(deckId) {
+  const el = document.getElementById('deck-contents');
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = '<p style="color:#aaa">Cargando palabras...</p>';
+  try {
+    const r = await fetch(API + '/api/mazo/' + deckId + '/palabras');
+    const d = await r.json();
+    if (d.error) { el.innerHTML = `<p style="color:#e94560">${d.error}</p>`; return; }
+
+    let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">`;
+    html += `<h3 style="color:#4ecca3;margin:0">${d.label} (${d.count} palabras)</h3>`;
+    html += `<a href="/api/mazo/${deckId}/csv" class="btn btn-sm btn-secondary" download>Exportar CSV</a>`;
+    html += `</div>`;
+    html += `<div style="font-size:0.8em;color:#555;margin-bottom:6px">Click en columna para ordenar | Click en palabra para explorar</div>`;
+    html += `<div style="max-height:400px;overflow-y:auto;background:#16213e;border-radius:8px;padding:8px">`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:0.85em" id="deck-table">`;
+    html += `<thead><tr>`;
+    html += `<th style="cursor:pointer;padding:6px 8px;color:#4ecca3;border-bottom:1px solid #333;text-align:left" onclick="sortDeckTable(0)">Palabra</th>`;
+    html += `<th style="cursor:pointer;padding:6px 8px;color:#4ecca3;border-bottom:1px solid #333;text-align:right" onclick="sortDeckTable(1)">Pts</th>`;
+    html += `<th style="cursor:pointer;padding:6px 8px;color:#4ecca3;border-bottom:1px solid #333;text-align:right" onclick="sortDeckTable(2)">Long</th>`;
+    html += `</tr></thead><tbody>`;
+    d.words.forEach(w => {
+      html += `<tr>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid #222"><span class="word-link" onclick="exploreFromStats('${w.word}')">${w.word.toUpperCase()}</span></td>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid #222;text-align:right;color:#aaa">${w.value}</td>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid #222;text-align:right;color:#aaa">${w.length}</td>`;
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+    el.innerHTML = html;
+    el._data = d.words; // store for sorting
+  } catch(e) { el.innerHTML = '<p style="color:#e94560">Error cargando mazo</p>'; }
+}
+
+let deckSortCol = -1;
+let deckSortAsc = true;
+function sortDeckTable(col) {
+  const el = document.getElementById('deck-contents');
+  if (!el || !el._data) return;
+  if (deckSortCol === col) deckSortAsc = !deckSortAsc;
+  else { deckSortCol = col; deckSortAsc = true; }
+  const keys = ['word', 'value', 'length'];
+  el._data.sort((a, b) => {
+    let va = a[keys[col]], vb = b[keys[col]];
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+    if (va < vb) return deckSortAsc ? -1 : 1;
+    if (va > vb) return deckSortAsc ? 1 : -1;
+    return 0;
+  });
+  const tbody = document.querySelector('#deck-table tbody');
+  tbody.innerHTML = el._data.map(w =>
+    `<tr><td style="padding:4px 8px;border-bottom:1px solid #222"><span class="word-link" onclick="exploreFromStats('${w.word}')">${w.word.toUpperCase()}</span></td>` +
+    `<td style="padding:4px 8px;border-bottom:1px solid #222;text-align:right;color:#aaa">${w.value}</td>` +
+    `<td style="padding:4px 8px;border-bottom:1px solid #222;text-align:right;color:#aaa">${w.length}</td></tr>`
+  ).join('');
 }
 
 function checkStartReady() {

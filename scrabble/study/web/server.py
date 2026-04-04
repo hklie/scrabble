@@ -39,7 +39,7 @@ from study.quiz import (_scramble, _blank_tokens, _parse_hook_input,
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
-app = FastAPI(title="Lexicable — Aprende palabras fácilmente")
+app = FastAPI(title="Lexicable — Aprende navegando en el universo de las palabras")
 
 # ── Global state (loaded at startup) ──
 
@@ -353,6 +353,61 @@ def listar_mazos():
     categories.append(cat)
 
     return {"categories": categories}
+
+
+# ── Deck content ──
+
+@app.get("/api/mazo/{deck_id}/palabras")
+def get_deck_words(deck_id: str):
+    """Return all words in a deck with metadata."""
+    if deck_id in VERB_PRESETS:
+        cards = apply_verb_preset(all_verbs, deck_id)
+    elif deck_id in WORD_PRESETS:
+        cards = apply_preset(all_cards, deck_id)
+    else:
+        return JSONResponse({"error": "Mazo no encontrado."}, 404)
+
+    all_presets = {}
+    all_presets.update(WORD_PRESETS)
+    all_presets.update(VERB_PRESETS)
+    label = all_presets.get(deck_id, deck_id)
+
+    words = []
+    for c in cards:
+        words.append({
+            "word": c["word"],
+            "value": c["value"],
+            "length": c["length"],
+            "prefix": _resolve_prefix(c["word"], c.get("prefix", "")),
+            "suffix": _resolve_suffix(c["word"], c.get("suffix", "")),
+            "front_hooks": c.get("front_hooks", []),
+            "back_hooks": c.get("back_hooks", []),
+        })
+    return {"deck_id": deck_id, "label": label, "count": len(words),
+            "words": words}
+
+
+@app.get("/api/mazo/{deck_id}/csv")
+def export_deck_csv(deck_id: str):
+    """Export deck words as CSV download."""
+    from fastapi.responses import Response
+    data = get_deck_words(deck_id)
+    if isinstance(data, JSONResponse):
+        return data
+
+    lines = ["Palabra,Puntos,Longitud,Prefijo,Sufijo,Ganchos Delanteros,Ganchos Traseros"]
+    for w in data["words"]:
+        fh = " ".join(w["front_hooks"])
+        bh = " ".join(w["back_hooks"])
+        lines.append(f'{w["word"]},{w["value"]},{w["length"]},'
+                     f'{w["prefix"]},{w["suffix"]},"{fh}","{bh}"')
+    csv_content = "\n".join(lines)
+    filename = f'mazo_{deck_id}.csv'
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 # ── Progress / Stats ──
