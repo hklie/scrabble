@@ -220,12 +220,13 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
     </details>
 
     <details class="transform-section">
-      <summary style="font-size:1em">Buscar por terminación + longitud</summary>
+      <summary style="font-size:1em">Buscar por terminación (letra final)</summary>
       <div style="padding:8px 0">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="ending-letter" placeholder="Letra final (ej: l, n, z)" style="width:120px">
-          <input type="number" id="ending-length" placeholder="Longitud" min="2" max="15" style="width:100px">
-          <button class="btn btn-sm btn-primary" onclick="searchByEnding()">Buscar</button>
+        <button class="btn btn-sm btn-secondary" onclick="loadEndings()">Cargar terminaciones</button>
+        <div id="endings-list"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="number" id="ending-length" placeholder="Filtrar por longitud" min="2" max="15" style="width:160px">
+          <button class="btn btn-sm btn-primary" onclick="searchByEnding()">Filtrar</button>
         </div>
         <div id="ending-results" style="margin-top:8px"></div>
       </div>
@@ -1228,12 +1229,12 @@ async function loadPrefixes() {
   try {
     const r = await fetch(API + '/api/prefijos');
     const d = await r.json();
-    let html = `<p style="color:#aaa;font-size:0.8em">${d.total} prefijos encontrados. Click para usar como mazo.</p>`;
-    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
+    let html = `<p style="color:#aaa;font-size:0.8em">${d.total} prefijos. Click para usar como mazo.</p>`;
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">';
     d.prefixes.forEach(p => {
-      html += `<span class="deck-btn" style="padding:4px 10px;font-size:0.85em;display:inline-block" `+
-        `onclick="selectDeckDynamic('prefix:${p.pattern}','Prefijo: ${p.prefix}')">` +
-        `${p.prefix}- <span style="color:#4ecca3">${p.count}</span></span>`;
+      html += `<span class="deck-btn" style="padding:3px 8px;font-size:0.8em;display:inline-block" `+
+        `onclick="selectDeckDynamic('prefix:${p.pattern}','Prefijo: ${p.prefix}-')">` +
+        `${p.prefix}- <span style="color:#4ecca3;font-size:0.85em">${p.count}</span></span>`;
     });
     html += '</div>';
     el.innerHTML = html;
@@ -1246,43 +1247,53 @@ async function loadSuffixes() {
   try {
     const r = await fetch(API + '/api/sufijos');
     const d = await r.json();
-    let html = `<p style="color:#aaa;font-size:0.8em">${d.total} sufijos encontrados. Click para usar como mazo.</p>`;
-    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
+    let html = `<p style="color:#aaa;font-size:0.8em">${d.total} sufijos. Click para usar como mazo.</p>`;
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">';
     d.suffixes.forEach(s => {
-      html += `<span class="deck-btn" style="padding:4px 10px;font-size:0.85em;display:inline-block" `+
-        `onclick="selectDeckDynamic('suffix:${s.pattern}','Sufijo: -${s.suffix}')">` +
-        `-${s.suffix} <span style="color:#4ecca3">${s.count}</span></span>`;
+      html += `<span class="deck-btn" style="padding:3px 8px;font-size:0.8em;display:inline-block" `+
+        `onclick="selectDeckDynamic('suffix:${s.pattern}','Sufijo: ${s.suffix}')">` +
+        `${s.suffix} <span style="color:#4ecca3;font-size:0.85em">${s.count}</span></span>`;
     });
     html += '</div>';
     el.innerHTML = html;
   } catch(e) { el.innerHTML = '<p style="color:#e94560">Error</p>'; }
 }
 
-async function searchByEnding() {
-  const ending = document.getElementById('ending-letter').value.trim().toLowerCase();
-  const length = parseInt(document.getElementById('ending-length').value) || 0;
-  const el = document.getElementById('ending-results');
-  if (!ending) { el.innerHTML = '<span style="color:#e94560">Ingresa una letra final.</span>'; return; }
-  el.innerHTML = '<p style="color:#aaa">Buscando...</p>';
+async function loadEndings() {
+  const el = document.getElementById('endings-list');
+  el.innerHTML = '<p style="color:#aaa">Cargando...</p>';
   try {
-    const url = API + '/api/terminaciones/' + ending + '/palabras' + (length ? '?length=' + length : '');
-    const d = await (await fetch(url)).json();
-    let deckId = 'ending:' + ending + (length ? ':' + length : '');
-    let label = `Terminación -${ending}` + (length ? ` (${length} letras)` : '');
-    let html = `<p style="color:#aaa;font-size:0.85em">${d.count} palabras encontradas.</p>`;
-    if (d.count > 0) {
-      html += `<div style="display:flex;gap:8px;margin:6px 0">`;
-      html += `<button class="btn btn-sm btn-primary" onclick="selectDeckDynamic('${deckId}','${label}')">Usar como mazo</button>`;
-      html += `</div>`;
-      html += '<div style="max-height:200px;overflow-y:auto;font-size:0.85em;color:#ccc;margin-top:4px">';
-      d.words.slice(0, 100).forEach(w => {
-        html += `<span class="word-link" onclick="exploreFromStats('${w.word}')" style="margin-right:8px">${w.word.toUpperCase()}</span>`;
-      });
-      if (d.count > 100) html += `<span style="color:#aaa">... y ${d.count - 100} más</span>`;
-      html += '</div>';
-    }
+    const r = await fetch(API + '/api/terminaciones');
+    const d = await r.json();
+    let html = `<p style="color:#aaa;font-size:0.8em">${d.total} terminaciones. Click para usar como mazo.</p>`;
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">';
+    d.endings.forEach(e => {
+      html += `<span class="deck-btn" style="padding:3px 8px;font-size:0.8em;display:inline-block" `+
+        `onclick="selectEndingDeck('${e.ending}')">` +
+        `-${e.ending.toUpperCase()} <span style="color:#4ecca3;font-size:0.85em">${e.count}</span></span>`;
+    });
+    html += '</div>';
     el.innerHTML = html;
   } catch(e) { el.innerHTML = '<p style="color:#e94560">Error</p>'; }
+}
+
+let selectedEnding = '';
+function selectEndingDeck(ending) {
+  selectedEnding = ending;
+  document.getElementById('ending-results').innerHTML = '';
+  const length = parseInt(document.getElementById('ending-length').value) || 0;
+  const deckId = 'ending:' + ending + (length ? ':' + length : '');
+  const label = 'Terminación -' + ending.toUpperCase() + (length ? ` (${length} letras)` : '');
+  selectDeckDynamic(deckId, label);
+}
+
+async function searchByEnding() {
+  const ending = selectedEnding || '';
+  const length = parseInt(document.getElementById('ending-length').value) || 0;
+  if (!ending) { document.getElementById('ending-results').innerHTML = '<span style="color:#e94560">Selecciona una terminación primero.</span>'; return; }
+  const deckId = 'ending:' + ending + (length ? ':' + length : '');
+  const label = `Terminación -${ending.toUpperCase()}` + (length ? ` (${length} letras)` : '');
+  selectDeckDynamic(deckId, label);
 }
 
 async function selectDeckDynamic(id, label) {

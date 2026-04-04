@@ -546,22 +546,36 @@ def get_prefijos():
 @app.get("/api/sufijos")
 def get_sufijos():
     """Return all suffixes with word counts, alphabetically sorted.
-    Excludes abstract patterns CC and VV."""
-    # Patterns to exclude (abstract, not real suffixes)
+    Excludes abstract patterns CC and VV. Shows vowel variants."""
     EXCLUDE_PATTERNS = {"CC", "VV"}
 
-    suffix_counts = {}
+    suffix_data = {}  # pattern -> {variants: set, count: int}
     for c in all_cards:
         s = c.get("suffix", "")
         if s and s not in EXCLUDE_PATTERNS:
             resolved = _resolve_suffix(c["word"], s)
-            key = s  # use pattern as key
-            if key not in suffix_counts:
-                suffix_counts[key] = {"example": resolved, "count": 0}
-            suffix_counts[key]["count"] += 1
-    result = [{"suffix": v["example"], "pattern": k, "count": v["count"]}
-              for k, v in sorted(suffix_counts.items(),
-                                  key=lambda x: x[1]["example"])]
+            if s not in suffix_data:
+                suffix_data[s] = {"variants": set(), "count": 0}
+            suffix_data[s]["variants"].add(resolved)
+            suffix_data[s]["count"] += 1
+
+    result = []
+    for pattern, data in suffix_data.items():
+        variants = sorted(data["variants"])
+        # Build compact label: find common base, list differing endings
+        if len(variants) > 1 and "V" in pattern:
+            # Extract the base (everything except last char) and list endings
+            base = variants[0][:-1]
+            endings = [v[-1] for v in variants]
+            label = f"-{base},{','.join(endings)}"
+        else:
+            label = f"-{variants[0]}"
+        result.append({
+            "suffix": label, "pattern": pattern,
+            "count": data["count"], "variants": variants,
+        })
+
+    result.sort(key=lambda x: x["variants"][0])
     return {"suffixes": result, "total": len(result)}
 
 
