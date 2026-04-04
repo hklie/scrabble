@@ -7,11 +7,13 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import random
 import sys
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 
 # Fix imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -48,6 +50,27 @@ card_lookup = {}
 progress = {}
 sessions = {}
 
+# Session history: persisted to Data/history.json
+HISTORY_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "..",
+                            "Data", "history.json")
+session_history = []
+
+
+def _load_history():
+    global session_history
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            session_history = json.load(f)
+    else:
+        session_history = []
+
+
+def _save_history():
+    tmp = HISTORY_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(session_history, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, HISTORY_FILE)
+
 
 @app.on_event("startup")
 def startup():
@@ -71,6 +94,8 @@ def startup():
     print("Building extension index...", end=" ", flush=True)
     _build_extension_index()
     print(f"{len(_extension_index)} words with derivations.")
+    _load_history()
+    print(f"Session history: {len(session_history)} sessions.")
 
 
 # ── Pydantic models ──
@@ -583,6 +608,7 @@ def iniciar_quiz(req: QuizStartRequest):
     session = QuizSession(
         session_id=sid, mode=req.mode, cards=session_cards
     )
+    session._deck_id = req.deck  # for history logging
     sessions[sid] = session
 
     # Resolve deck label for display
@@ -936,11 +962,67 @@ def _build_summary(session):
         return {"reviewed": 0, "avg_quality": 0, "struggling": []}
     avg = sum(q for _, q in session.results) / len(session.results)
     struggling = [w for w, q in session.results if q < 3]
-    return {
+    correct = [w for w, q in session.results if q >= 3]
+    summary = {
         "reviewed": len(session.results),
         "avg_quality": round(avg, 1),
         "struggling": struggling,
     }
+
+    # Log to session history
+    all_presets = {}
+    all_presets.update(WORD_PRESETS)
+    all_presets.update(VERB_PRESETS)
+
+    mode_labels = {
+        "review": "Repaso", "anagram": "Anagrama", "hooks": "Ganchos",
+        "pattern": "Patrón", "morphology": "Derivaciones",
+        "transformation": "Transformación", "extension": "Extensión",
+        "reduction": "Reducción",
+    }
+
+    entry = {
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "mode": mode_labels.get(session.mode, session.mode),
+        "deck": all_presets.get(
+            getattr(session, '_deck_id', ''), "Personalizado"),
+        "reviewed": len(session.results),
+        "avg_quality": round(avg, 1),
+        "correct": correct,
+        "struggling": struggling,
+    }
+    session_history.append(entry)
+    _save_history()
+
+    return summary
+
+
+# ── History endpoints ──
+
+@app.get("/api/historial")
+def get_historial():
+    """Return session history, most recent first."""
+    return {"sessions": list(reversed(session_history)),
+            "total": len(session_history)}
+
+
+@app.get("/api/historial/csv")
+def export_historial_csv():
+    """Export session history as CSV download."""
+    from fastapi.responses import Response
+    lines = ["Fecha,Modo,Mazo,Revisadas,Calidad Promedio,Correctas,En Dificultad"]
+    for s in session_history:
+        correct_str = "; ".join(s.get("correct", []))
+        struggling_str = "; ".join(s.get("struggling", []))
+        lines.append(f'{s["date"]},{s["mode"]},{s["deck"]},'
+                     f'{s["reviewed"]},{s["avg_quality"]},'
+                     f'"{correct_str}","{struggling_str}"')
+    csv_content = "\n".join(lines)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=historial_lexicable.csv"}
+    )
 
 
 # ── Static files ──
