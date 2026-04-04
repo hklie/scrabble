@@ -37,7 +37,9 @@ def match_prefix(word):
 
 def match_suffix(word):
     vowels = "aeiou"
-    for suffix in EXTENSIVE_SUFIXES:
+    # Sort by length descending so longer/more specific patterns match first
+    # (e.g., illV before lV, acion before cion)
+    for suffix in sorted(EXTENSIVE_SUFIXES, key=len, reverse=True):
         if suffix == "VV":
             if len(word) >= 2 and word[-2] in vowels and word[-1] in vowels:
                 return "VV"
