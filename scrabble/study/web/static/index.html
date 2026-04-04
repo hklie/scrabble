@@ -182,6 +182,54 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
     <div style="text-align:center;margin:16px 0">
       <button class="btn btn-primary" onclick="startQuiz()" id="start-btn" disabled>Iniciar Quiz</button>
     </div>
+
+    <hr style="border-color:#333;margin:20px 0">
+
+    <!-- Custom list creation -->
+    <details class="transform-section">
+      <summary style="font-size:1em">Crear lista personalizada</summary>
+      <div style="padding:8px 0">
+        <input type="text" id="custom-list-name" placeholder="Nombre de la lista..." style="margin-bottom:8px">
+        <textarea id="custom-list-words" rows="5" placeholder="Pega las palabras aquí (una por línea o separadas por comas)..."
+          style="width:100%;background:#16213e;color:#eee;border:1px solid #333;border-radius:6px;padding:10px;font-size:0.9em;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-primary btn-sm" onclick="createCustomList()">Crear lista</button>
+        </div>
+        <div id="custom-list-result" style="margin-top:8px"></div>
+      </div>
+    </details>
+
+    <!-- Manage custom lists -->
+    <div id="custom-lists-manage" style="margin:8px 0"></div>
+
+    <!-- Prefix/Suffix/Ending selectors -->
+    <details class="transform-section">
+      <summary style="font-size:1em">Buscar por prefijo</summary>
+      <div id="prefix-browser" style="padding:8px 0">
+        <button class="btn btn-sm btn-secondary" onclick="loadPrefixes()">Cargar prefijos</button>
+        <div id="prefix-list"></div>
+      </div>
+    </details>
+
+    <details class="transform-section">
+      <summary style="font-size:1em">Buscar por sufijo</summary>
+      <div id="suffix-browser" style="padding:8px 0">
+        <button class="btn btn-sm btn-secondary" onclick="loadSuffixes()">Cargar sufijos</button>
+        <div id="suffix-list"></div>
+      </div>
+    </details>
+
+    <details class="transform-section">
+      <summary style="font-size:1em">Buscar por terminación + longitud</summary>
+      <div style="padding:8px 0">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="ending-letter" placeholder="Letra final (ej: l, n, z)" style="width:120px">
+          <input type="number" id="ending-length" placeholder="Longitud" min="2" max="15" style="width:100px">
+          <button class="btn btn-sm btn-primary" onclick="searchByEnding()">Buscar</button>
+        </div>
+        <div id="ending-results" style="margin-top:8px"></div>
+      </div>
+    </details>
   </div>
 
   <!-- ===== QUIZ ACTIVE SCREEN ===== -->
@@ -1123,10 +1171,138 @@ function showSummary(summary) {
   loadStats();
 }
 
+// ── Custom lists ──
+async function createCustomList() {
+  const name = document.getElementById('custom-list-name').value.trim();
+  const words = document.getElementById('custom-list-words').value.trim();
+  const el = document.getElementById('custom-list-result');
+  if (!name || !words) { el.innerHTML = '<span style="color:#e94560">Ingresa nombre y palabras.</span>'; return; }
+  try {
+    const r = await fetch(API + '/api/listas', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name, words})
+    });
+    const d = await r.json();
+    let html = `<span style="color:#4ecca3">Lista "${d.name}" creada: ${d.valid} palabras válidas.</span>`;
+    if (d.invalid > 0) {
+      html += `<br><span style="color:#e94560">${d.invalid} palabras no válidas: ${d.invalid_words.join(', ')}</span>`;
+    }
+    el.innerHTML = html;
+    document.getElementById('custom-list-name').value = '';
+    document.getElementById('custom-list-words').value = '';
+    loadDecks(); // refresh deck list
+    loadCustomListsManage();
+  } catch(e) { el.innerHTML = '<span style="color:#e94560">Error creando lista</span>'; }
+}
+
+async function loadCustomListsManage() {
+  const el = document.getElementById('custom-lists-manage');
+  try {
+    const r = await fetch(API + '/api/listas');
+    const d = await r.json();
+    if (d.lists.length === 0) { el.innerHTML = ''; return; }
+    let html = '<h3 style="color:#aaa;margin-top:12px">Mis listas</h3>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px">';
+    d.lists.forEach(l => {
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;background:#16213e;padding:8px 12px;border-radius:6px">`;
+      html += `<span><b style="color:#4ecca3">${l.name}</b> <span style="color:#aaa">(${l.count})</span></span>`;
+      html += `<button class="btn btn-sm btn-danger" onclick="deleteCustomList('${l.id}','${l.name}')">Eliminar</button>`;
+      html += `</div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) {}
+}
+
+async function deleteCustomList(id, name) {
+  if (!confirm(`¿Eliminar la lista "${name}"?`)) return;
+  await fetch(API + '/api/listas/' + id, {method: 'DELETE'});
+  loadDecks();
+  loadCustomListsManage();
+}
+
+// ── Prefix/Suffix/Ending browsers ──
+async function loadPrefixes() {
+  const el = document.getElementById('prefix-list');
+  el.innerHTML = '<p style="color:#aaa">Cargando...</p>';
+  try {
+    const r = await fetch(API + '/api/prefijos');
+    const d = await r.json();
+    let html = `<p style="color:#aaa;font-size:0.8em">${d.total} prefijos encontrados. Click para usar como mazo.</p>`;
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
+    d.prefixes.forEach(p => {
+      html += `<span class="deck-btn" style="padding:4px 10px;font-size:0.85em;display:inline-block" `+
+        `onclick="selectDeckDynamic('prefix:${p.pattern}','Prefijo: ${p.prefix}')">` +
+        `${p.prefix}- <span style="color:#4ecca3">${p.count}</span></span>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<p style="color:#e94560">Error</p>'; }
+}
+
+async function loadSuffixes() {
+  const el = document.getElementById('suffix-list');
+  el.innerHTML = '<p style="color:#aaa">Cargando...</p>';
+  try {
+    const r = await fetch(API + '/api/sufijos');
+    const d = await r.json();
+    let html = `<p style="color:#aaa;font-size:0.8em">${d.total} sufijos encontrados. Click para usar como mazo.</p>`;
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
+    d.suffixes.forEach(s => {
+      html += `<span class="deck-btn" style="padding:4px 10px;font-size:0.85em;display:inline-block" `+
+        `onclick="selectDeckDynamic('suffix:${s.pattern}','Sufijo: -${s.suffix}')">` +
+        `-${s.suffix} <span style="color:#4ecca3">${s.count}</span></span>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<p style="color:#e94560">Error</p>'; }
+}
+
+async function searchByEnding() {
+  const ending = document.getElementById('ending-letter').value.trim().toLowerCase();
+  const length = parseInt(document.getElementById('ending-length').value) || 0;
+  const el = document.getElementById('ending-results');
+  if (!ending) { el.innerHTML = '<span style="color:#e94560">Ingresa una letra final.</span>'; return; }
+  el.innerHTML = '<p style="color:#aaa">Buscando...</p>';
+  try {
+    const url = API + '/api/terminaciones/' + ending + '/palabras' + (length ? '?length=' + length : '');
+    const d = await (await fetch(url)).json();
+    let deckId = 'ending:' + ending + (length ? ':' + length : '');
+    let label = `Terminación -${ending}` + (length ? ` (${length} letras)` : '');
+    let html = `<p style="color:#aaa;font-size:0.85em">${d.count} palabras encontradas.</p>`;
+    if (d.count > 0) {
+      html += `<div style="display:flex;gap:8px;margin:6px 0">`;
+      html += `<button class="btn btn-sm btn-primary" onclick="selectDeckDynamic('${deckId}','${label}')">Usar como mazo</button>`;
+      html += `</div>`;
+      html += '<div style="max-height:200px;overflow-y:auto;font-size:0.85em;color:#ccc;margin-top:4px">';
+      d.words.slice(0, 100).forEach(w => {
+        html += `<span class="word-link" onclick="exploreFromStats('${w.word}')" style="margin-right:8px">${w.word.toUpperCase()}</span>`;
+      });
+      if (d.count > 100) html += `<span style="color:#aaa">... y ${d.count - 100} más</span>`;
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<p style="color:#e94560">Error</p>'; }
+}
+
+function selectDeckDynamic(id, label) {
+  selectedDeck = id;
+  document.querySelectorAll('.deck-btn').forEach(b => b.style.borderColor = '#333');
+  checkStartReady();
+  // Show a confirmation
+  const dc = document.getElementById('deck-contents');
+  if (dc) {
+    dc.style.display = 'block';
+    dc.innerHTML = `<div style="background:#0f3460;padding:10px;border-radius:6px;text-align:center">` +
+      `<span style="color:#4ecca3;font-weight:bold">${label}</span> seleccionado como mazo</div>`;
+  }
+}
+
 // ── Init ──
 buildModeGrid();
 loadStats();
 loadDecks();
+loadCustomListsManage();
 showScreen('explorer');
 </script>
 </body>

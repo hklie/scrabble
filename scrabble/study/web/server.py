@@ -25,10 +25,11 @@ from pydantic import BaseModel
 
 from lexicon import load_lexicon_trie, is_valid_word, word_value, _word_in_trie
 from preprocessing import tokenize_word, detokenize_word
-from config import SCRABBLE_POINTS, DIGRAPHS, INTERNAL_POINTS, ALL_TILES
+from config import (SCRABBLE_POINTS, DIGRAPHS, INTERNAL_POINTS, ALL_TILES,
+                    EXTENSIVE_PREFIXES, EXTENSIVE_SUFIXES)
 from study.decks import (load_word_analysis, load_verbs, apply_preset,
                          apply_verb_preset, available_decks,
-                         WORD_PRESETS, VERB_PRESETS)
+                         WORD_PRESETS, VERB_PRESETS, filter_cards)
 from study.srs import (load_progress, save_progress, update_card,
                         build_session, get_due_cards, CardState)
 from study.transforms import one_letter_changes, insert_letter, remove_letter
@@ -72,6 +73,28 @@ def _save_history():
     os.replace(tmp, HISTORY_FILE)
 
 
+# Custom word lists: persisted to Data/custom_lists.json
+CUSTOM_LISTS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "..",
+                                  "Data", "custom_lists.json")
+custom_lists = {}  # id -> {name, words: [str]}
+
+
+def _load_custom_lists():
+    global custom_lists
+    if os.path.exists(CUSTOM_LISTS_FILE):
+        with open(CUSTOM_LISTS_FILE, "r", encoding="utf-8") as f:
+            custom_lists = json.load(f)
+    else:
+        custom_lists = {}
+
+
+def _save_custom_lists():
+    tmp = CUSTOM_LISTS_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(custom_lists, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, CUSTOM_LISTS_FILE)
+
+
 @app.on_event("startup")
 def startup():
     global trie, all_cards, all_verbs, card_lookup, progress
@@ -96,6 +119,8 @@ def startup():
     print(f"{len(_extension_index)} words with derivations.")
     _load_history()
     print(f"Session history: {len(session_history)} sessions.")
+    _load_custom_lists()
+    print(f"Custom lists: {len(custom_lists)} lists.")
 
 
 # ── Pydantic models ──
@@ -114,6 +139,11 @@ class AnswerRequest(BaseModel):
 
 class RateRequest(BaseModel):
     quality: int
+
+
+class CustomListRequest(BaseModel):
+    name: str
+    words: str  # newline or comma separated
 
 
 # ── Session state ──
@@ -352,6 +382,16 @@ def listar_mazos():
         })
     categories.append(cat)
 
+    # Custom lists
+    if custom_lists:
+        cat = {"name": "Mis listas", "decks": []}
+        for lid, lst in custom_lists.items():
+            cat["decks"].append({
+                "id": f"custom:{lid}", "label": lst["name"],
+                "count": len(lst["words"])
+            })
+        categories.append(cat)
+
     return {"categories": categories}
 
 
@@ -408,6 +448,146 @@ def export_deck_csv(deck_id: str):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# ── Custom lists ──
+
+@app.get("/api/listas")
+def get_listas():
+    """Return all custom lists."""
+    result = []
+    for lid, lst in custom_lists.items():
+        result.append({"id": lid, "name": lst["name"],
+                       "count": len(lst["words"])})
+    return {"lists": result}
+
+
+@app.post("/api/listas")
+def create_lista(req: CustomListRequest):
+    """Create a custom list. Validates words against FISE2."""
+    raw_words = [w.strip().lower() for w in
+                 req.words.replace(",", "\n").split("\n") if w.strip()]
+    # Normalize accents
+    raw_words = [_normalize_word(w) for w in raw_words]
+    valid = [w for w in raw_words if _word_in_trie(trie, tokenize_word(w))]
+    invalid = [w for w in raw_words if w not in set(valid)]
+
+    lid = str(uuid.uuid4())[:8]
+    custom_lists[lid] = {"name": req.name, "words": valid}
+    _save_custom_lists()
+
+    return {"id": lid, "name": req.name, "valid": len(valid),
+            "invalid": len(invalid), "invalid_words": invalid[:20]}
+
+
+@app.delete("/api/listas/{list_id}")
+def delete_lista(list_id: str):
+    if list_id not in custom_lists:
+        return JSONResponse({"error": "Lista no encontrada."}, 404)
+    name = custom_lists[list_id]["name"]
+    del custom_lists[list_id]
+    _save_custom_lists()
+    return {"deleted": list_id, "name": name}
+
+
+@app.put("/api/listas/{list_id}")
+def rename_lista(list_id: str, req: CustomListRequest):
+    if list_id not in custom_lists:
+        return JSONResponse({"error": "Lista no encontrada."}, 404)
+    custom_lists[list_id]["name"] = req.name
+    if req.words.strip():
+        raw_words = [_normalize_word(w.strip().lower()) for w in
+                     req.words.replace(",", "\n").split("\n") if w.strip()]
+        valid = [w for w in raw_words if _word_in_trie(trie, tokenize_word(w))]
+        custom_lists[list_id]["words"] = valid
+    _save_custom_lists()
+    return {"id": list_id, "name": custom_lists[list_id]["name"],
+            "count": len(custom_lists[list_id]["words"])}
+
+
+# ── Prefix/Suffix selectors ──
+
+@app.get("/api/prefijos")
+def get_prefijos():
+    """Return all prefixes with word counts."""
+    prefix_counts = {}
+    for c in all_cards:
+        p = c.get("prefix", "")
+        if p:
+            resolved = _resolve_prefix(c["word"], p)
+            prefix_counts.setdefault(resolved, {"pattern": p, "count": 0})
+            prefix_counts[resolved]["count"] += 1
+    result = [{"prefix": k, "pattern": v["pattern"], "count": v["count"]}
+              for k, v in sorted(prefix_counts.items(),
+                                  key=lambda x: -x[1]["count"])]
+    return {"prefixes": result, "total": len(result)}
+
+
+@app.get("/api/sufijos")
+def get_sufijos():
+    """Return all suffixes with word counts."""
+    suffix_counts = {}
+    for c in all_cards:
+        s = c.get("suffix", "")
+        if s:
+            resolved = _resolve_suffix(c["word"], s)
+            # Group by pattern for consistency
+            key = s  # use pattern as key
+            if key not in suffix_counts:
+                suffix_counts[key] = {"example": resolved, "count": 0}
+            suffix_counts[key]["count"] += 1
+    result = [{"suffix": v["example"], "pattern": k, "count": v["count"]}
+              for k, v in sorted(suffix_counts.items(),
+                                  key=lambda x: -x[1]["count"])]
+    return {"suffixes": result, "total": len(result)}
+
+
+@app.get("/api/prefijos/{prefix}/palabras")
+def get_prefix_words(prefix: str):
+    """Return words matching a prefix."""
+    words = [c for c in all_cards if c.get("prefix", "") == prefix]
+    # Also try matching resolved prefix
+    if not words:
+        words = [c for c in all_cards
+                 if _resolve_prefix(c["word"], c.get("prefix", "")) == prefix]
+    result = [{"word": c["word"], "value": c["value"], "length": c["length"]}
+              for c in words]
+    return {"prefix": prefix, "count": len(result), "words": result}
+
+
+@app.get("/api/sufijos/{suffix}/palabras")
+def get_suffix_words(suffix: str):
+    """Return words matching a suffix pattern."""
+    words = [c for c in all_cards if c.get("suffix", "") == suffix]
+    result = [{"word": c["word"], "value": c["value"], "length": c["length"]}
+              for c in words]
+    return {"suffix": suffix, "count": len(result), "words": result}
+
+
+@app.get("/api/terminaciones")
+def get_terminaciones():
+    """Return all endings with word counts, filterable by length."""
+    ending_counts = {}
+    for c in all_cards:
+        e = c.get("ending", "")
+        if e:
+            ending_counts[e] = ending_counts.get(e, 0) + 1
+    result = [{"ending": k, "count": v}
+              for k, v in sorted(ending_counts.items(),
+                                  key=lambda x: -x[1])]
+    return {"endings": result, "total": len(result)}
+
+
+@app.get("/api/terminaciones/{ending}/palabras")
+def get_ending_words(ending: str, length: int = 0):
+    """Return words with a given ending, optionally filtered by length."""
+    words = [c for c in all_cards if c.get("ending", "") == ending]
+    if length > 0:
+        words = [c for c in words if c["length"] == length]
+    result = [{"word": c["word"], "value": c["value"], "length": c["length"]}
+              for c in words]
+    return {"ending": ending, "length": length, "count": len(result),
+            "words": result}
 
 
 # ── Progress / Stats ──
@@ -491,8 +671,27 @@ def _resolve_deck(deck_id, min_length=None, max_length=None):
         return apply_verb_preset(all_verbs, deck_id)
     elif deck_id in WORD_PRESETS:
         return apply_preset(all_cards, deck_id)
+    elif deck_id.startswith("custom:"):
+        lid = deck_id[7:]
+        if lid in custom_lists:
+            words = custom_lists[lid]["words"]
+            return [card_lookup[w] for w in words if w in card_lookup]
+        return []
+    elif deck_id.startswith("prefix:"):
+        prefix = deck_id[7:]
+        return [c for c in all_cards if c.get("prefix", "") == prefix]
+    elif deck_id.startswith("suffix:"):
+        suffix = deck_id[7:]
+        return [c for c in all_cards if c.get("suffix", "") == suffix]
+    elif deck_id.startswith("ending:"):
+        parts = deck_id[7:].split(":")
+        ending = parts[0]
+        length = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+        result = [c for c in all_cards if c.get("ending", "") == ending]
+        if length > 0:
+            result = [c for c in result if c["length"] == length]
+        return result
     elif deck_id == "" and min_length and max_length:
-        from study.decks import filter_cards
         return filter_cards(all_cards, min_length=min_length,
                             max_length=max_length)
     else:
