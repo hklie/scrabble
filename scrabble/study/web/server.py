@@ -630,24 +630,41 @@ def get_suffix_words(suffix: str):
 
 @app.get("/api/terminaciones")
 def get_terminaciones():
-    """Return all endings with word counts, filterable by length."""
+    """Return all endings (last token) with word counts, alphabetically sorted.
+    Uses the last token to correctly handle digraphs (ch, ll, rr, ñ)."""
     ending_counts = {}
     for c in all_cards:
-        e = c.get("ending", "")
-        if e:
-            ending_counts[e] = ending_counts.get(e, 0) + 1
+        if c["length"] < 2:  # skip single-letter words
+            continue
+        tokens = c.get("tokens", [])
+        if tokens:
+            last_token = tokens[-1]
+            # Convert internal code to display form
+            display = DIGRAPHS.get(last_token, last_token)
+            ending_counts[display] = ending_counts.get(display, 0) + 1
     result = [{"ending": k, "count": v}
-              for k, v in sorted(ending_counts.items(),
-                                  key=lambda x: -x[1])]
+              for k, v in sorted(ending_counts.items())]
     return {"endings": result, "total": len(result)}
 
 
 @app.get("/api/terminaciones/{ending}/palabras")
 def get_ending_words(ending: str, length: int = 0):
-    """Return words with a given ending, optionally filtered by length."""
-    words = [c for c in all_cards if c.get("ending", "") == ending]
-    if length > 0:
-        words = [c for c in words if c["length"] == length]
+    """Return words with a given ending (last token), optionally filtered by length.
+    Handles digraphs: ending='ch' matches words whose last token is ch."""
+    # Map display form to internal code if needed
+    from config import DIGRAPH_MAP
+    internal = DIGRAPH_MAP.get(ending, ending)
+
+    words = []
+    for c in all_cards:
+        if c["length"] < 2:  # skip single-letter words
+            continue
+        tokens = c.get("tokens", [])
+        if tokens and tokens[-1] == internal:
+            if length > 0 and c["length"] != length:
+                continue
+            words.append(c)
+
     result = [{"word": c["word"], "value": c["value"], "length": c["length"]}
               for c in words]
     return {"ending": ending, "length": length, "count": len(result),
@@ -756,7 +773,11 @@ def _resolve_deck(deck_id, min_length=None, max_length=None):
         parts = deck_id[7:].split(":")
         ending = parts[0]
         length = int(parts[1]) if len(parts) > 1 and parts[1] else 0
-        result = [c for c in all_cards if c.get("ending", "") == ending]
+        from config import DIGRAPH_MAP
+        internal = DIGRAPH_MAP.get(ending, ending)
+        result = [c for c in all_cards
+                  if c["length"] >= 2 and c.get("tokens", [])
+                  and c["tokens"][-1] == internal]
         if length > 0:
             result = [c for c in result if c["length"] == length]
         return result
