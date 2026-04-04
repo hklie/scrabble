@@ -220,6 +220,41 @@ Registro visible de palabras exploradas y quizzes realizados, para consultar qu�
 
 ---
 
+## Milestone B.3 — Listas Personalizadas y Filtros de Estudio
+
+El usuario debe poder crear sus propias listas de palabras y personalizar qué prefijos o sufijos incluir en el estudio, en lugar de depender únicamente de los mazos preconfigurados.
+
+### Listas de palabras personalizadas
+
+| # | Tarea | Esfuerzo | Descripción |
+|---|-------|----------|-------------|
+| B3.1 | Importar lista propia de palabras | Medio | Subir un archivo .txt (una palabra por línea) o pegar una lista en un textarea. El sistema valida cada palabra contra el léxico FISE2, descarta las inválidas, y crea un mazo personalizado |
+| B3.2 | Crear lista desde el explorador | Pequeño | Botón "Agregar a mi lista" en el explorador. El usuario va buscando palabras y las agrega a una lista nombrada |
+| B3.3 | Crear lista desde resultados de quiz | Pequeño | Después de cada sesión, opción de guardar las palabras en dificultad (quality < 3) como lista personalizada para repaso dirigido |
+| B3.4 | Gestión de listas | Medio | Ver, renombrar, eliminar y combinar listas personalizadas. Persistir en `Data/custom_lists.json` o directorio `Data/custom/` |
+| B3.5 | Listas personalizadas como mazos de quiz | Pequeño | Las listas aparecen en el selector de mazos junto a los preconfigurados, bajo categoría "Mis listas" |
+
+### Prefijos y sufijos personalizables
+
+| # | Tarea | Esfuerzo | Descripción |
+|---|-------|----------|-------------|
+| B3.6 | Selector de prefijos para estudio | Medio | En la UI, mostrar todos los prefijos disponibles (de `config.EXTENSIVE_PREFIXES`) con conteo de palabras. El usuario selecciona cuáles quiere estudiar y genera un mazo al vuelo |
+| B3.7 | Selector de sufijos para estudio | Medio | Igual que B3.6 pero con `config.EXTENSIVE_SUFIXES`. Incluye sufijos con variantes vocálicas (erV, illV, etc.) |
+| B3.8 | Filtros combinados | Medio | Combinar prefijo + sufijo + longitud + terminación + nivel consonántico en un solo filtro personalizado. Guardar filtros favoritos para reutilizar |
+| B3.9 | Generador de mazos por terminación | Pequeño | Seleccionar una o varias terminaciones (ej: L, N, R, Z, D) y una longitud para generar un mazo al vuelo |
+| B3.10 | Estudio por familias de palabras | Medio | Dado un prefijo o sufijo, mostrar todas las palabras agrupadas por raíz común. Útil para memorizar familias morfológicas completas |
+
+### Backend
+
+| # | Tarea | Esfuerzo | Descripción |
+|---|-------|----------|-------------|
+| B3.11 | Endpoint: importar lista personalizada | Pequeño | `POST /api/listas` con body de palabras → valida, crea, retorna mazo |
+| B3.12 | Endpoint: listar/gestionar listas | Pequeño | `GET /api/listas`, `DELETE /api/listas/{id}`, `PUT /api/listas/{id}` |
+| B3.13 | Endpoint: prefijos/sufijos disponibles | Pequeño | `GET /api/prefijos` y `GET /api/sufijos` con conteo de palabras por cada uno |
+| B3.14 | Endpoint: generar mazo con filtros combinados | Pequeño | `POST /api/mazos/personalizado` con filtros → retorna mazo al vuelo |
+
+---
+
 ## Milestone C — Móvil y Pulido
 
 | # | Tarea | Esfuerzo |
