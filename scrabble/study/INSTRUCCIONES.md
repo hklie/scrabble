@@ -1,6 +1,6 @@
-# Estudio — Sistema de Estudio y Quiz de Palabras
+# Lexicable — Módulo de Estudio
 
-Conjunto completo de herramientas para el estudio de palabras del Scrabble en espanol: scripts de analisis del lexico que generan listas de palabras categorizadas, mas un sistema interactivo de quiz con repeticion espaciada, 8 modos de estudio, consulta de palabras, 20 mazos preconfigurados y programacion SRS.
+**Lexicable: Aprende palabras fácilmente** — Conjunto completo de herramientas para el estudio de palabras del Scrabble en español (léxico FISE2). Incluye interfaz web con explorador de palabras, 8 modos de quiz, repetición espaciada (SRS), historial de sesiones y 20 mazos preconfigurados. También disponible como herramienta de línea de comandos.
 
 ## Inicio Rapido
 
@@ -60,11 +60,11 @@ python scrabble/study/synergy.py
 
 | Modo | Descripcion |
 |------|-------------|
-| **Repaso** | Tarjetas de autoevaluacion. Muestra la palabra, revela ganchos/morfologia/anagramas, calificar 0–5. |
-| **Anagrama** | Se muestran letras desordenadas, escribir la palabra. 2 intentos antes de revelar. |
-| **Ganchos** | Dada una palabra, nombrar las letras que pueden engancharse antes y despues (los 28 tipos de fichas). Puntuacion por completitud. |
-| **Patron** | Palabra con ~40% de letras ocultas (se ocultan primero las de mayor valor). Completar la palabra. |
-| **Morfologia** | Dada una palabra, identificar su prefijo y sufijo. |
+| **Repaso** | Tarjetas de autoevaluacion. Muestra la palabra, presionar "Revelar" para ver informacion completa (ganchos, morfologia, anagramas, enlaces RAE/Wiki), luego calificar 0–5. |
+| **Anagrama** | Letras desordenadas como fichas de Scrabble. Escribir TODAS las palabras validas (separadas por comas). Puntuacion por fraccion encontrada con desglose correcto/incorrecto/faltante. |
+| **Ganchos** | Dada una palabra, nombrar ganchos delanteros (letras ANTES) y traseros (letras DESPUES) en campos separados. Los 28 tipos de fichas incluyendo digrafos. Puntuacion por completitud. |
+| **Patron** | Palabra con ~40% de letras ocultas (las de mayor valor primero). Se muestra el valor en puntos como pista. Acepta cualquier palabra valida que coincida con el patron y los puntos. |
+| **Derivaciones** | Dada una palabra (ej: COCAL), listar todas las palabras mas largas que se forman extendiendola (COCALERA, COCALERO). Puntuacion por fraccion encontrada. |
 | **Transformacion** | Dada una palabra con una posicion oculta, nombrar letras de reemplazo validas que formen nuevas palabras. Puntuacion por completitud. |
 | **Extension** | Dada una palabra con un espacio de insercion en una posicion aleatoria, nombrar letras validas para insertar. Puntuacion por completitud. |
 | **Reduccion** | Dada una palabra, identificar que letra(s) se pueden eliminar dejando una palabra valida. Puntuacion por completitud. |
@@ -211,11 +211,15 @@ python -m study.web.server --port 8080
 # Abrir http://localhost:8080
 ```
 
-**Explorador**: Escribe cualquier palabra para verificar validez, ver puntos, ganchos, prefijo/sufijo, y expandir transformaciones/extensiones/reducciones.
+**Pestanas:**
 
-**Quiz**: Selecciona un modo (8 disponibles), elige un mazo por categoria, configura el tamano de sesion y estudia con tarjetas estilo ficha de Scrabble. El progreso SRS se guarda entre sesiones.
+- **Explorador**: Escribe cualquier palabra para verificar validez, ver puntos, ganchos (delanteros/traseros), morfologia (sufijos resueltos: -ena no -enV), anagramas, historial SRS, y enlaces a RAE/Wikcionario/Wikipedia. Secciones expandibles para transformaciones, extensiones y reducciones. Acepta acentos (cafe→cafe).
+- **Quiz**: Selecciona un modo (8 disponibles), elige un mazo por categoria (etiquetas en espanol), configura el tamano de sesion. Fichas estilo Scrabble con barra de progreso. Panel de estadisticas con detalle por palabra. Nota aclaratoria sobre mazos sin verbos.
+- **Historial**: Registro de sesiones con fecha, modo, mazo, tarjetas revisadas, calidad promedio, palabras correctas/en dificultad. Exportar como CSV.
+- **Instrucciones**: Guia completa del explorador, los 8 modos de quiz, categorias de mazos, sistema SRS y formatos de entrada.
+- **Mas Informacion**: Version 1.0, autor (Hector Klie), organizacion (USA Lexico).
 
-Todo el texto esta en espanol. Tema oscuro, diseno responsive.
+Todo el texto esta en espanol. Tema oscuro.
 
 ## Estructura del Modulo
 

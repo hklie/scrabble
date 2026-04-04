@@ -1,6 +1,14 @@
-# Spanish Scrabble Word Study Tool
+# Lexicable — Spanish Scrabble Study & Play Platform
 
-A Python toolkit for analyzing, filtering, ranking, and organizing a Spanish-language Scrabble lexicon into study materials. It includes a board image analyzer that uses OCR to read board and rack photos, then finds the highest-scoring plays using the Appel-Jacobson algorithm. It handles Spanish digraphs (`ch`, `ll`, `rr`) via an internal encoding system and produces categorized word lists, probability rankings, CSV exports, and flashcard-style transformation chains.
+A Python platform for Spanish-speaking Scrabble players. Three modules:
+
+- **study/** — **Lexicable**: Web-based word study tool with explorer, 8 quiz modes, spaced repetition (SRS), session history. [Launch: `python -m study.web.server --port 8080`]
+- **duplicate/** — Multiplayer Duplicate Scrabble game (CLI + web with WebSocket)
+- **play/** — Board training and move analysis (planned)
+
+Also includes a board image analyzer (OCR + Appel-Jacobson algorithm) and a solitaire autoplay engine. Handles Spanish digraphs (`ch`, `ll`, `rr`) and Ñ via an internal encoding system. Built for the FISE2 lexicon (~639K words).
+
+**Author:** Hector Klie — USA Lexico
 
 ## Project Structure
 

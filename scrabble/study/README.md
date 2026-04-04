@@ -1,6 +1,6 @@
-# Study — Word Study & Quiz System
+# Lexicable — Study Module
 
-A complete word study toolkit for Spanish Scrabble: lexicon analysis scripts that generate categorized word lists, plus an interactive spaced-repetition quiz system with 8 quiz modes, word lookup, 20 preset decks, and SRS scheduling.
+**Lexicable: Aprende palabras fácilmente** — A complete word study toolkit for Spanish Scrabble (FISE2 lexicon). Includes an interactive web UI with word explorer, 8 quiz modes, spaced repetition (SRS), session history, and 20 preset decks. Also available as a CLI tool.
 
 ## Quick Start
 
@@ -60,16 +60,16 @@ python scrabble/study/synergy.py
 
 | Mode | Description |
 |------|-------------|
-| **Review** | Self-assessment flashcards. Show word, reveal hooks/morphology/anagrams, rate 0–5. |
-| **Anagram** | Scrambled letters displayed, type the word. 2 attempts before reveal. |
-| **Hooks** | Given a word, name the front and back hook letters (all 28 tile types). Scored by completeness. |
-| **Pattern** | Word with ~40% of letters blanked (high-value letters hidden first). Fill in the full word. |
-| **Morphology** | Given a word, identify its prefix and suffix. |
-| **Transformation** | Given a word with one position blanked, name valid replacement letters that form new words. Scored by completeness. |
-| **Extension** | Given a word with an insertion slot at a random position, name valid letters to insert. Scored by completeness. |
+| **Review** | Self-assessment flashcards. Show word, reveal full info (hooks, morphology, anagrams, RAE/Wiki links), then rate 0–5. |
+| **Anagram** | Scrambled letters as Scrabble tiles. Type ALL valid anagrams (comma-separated). Scored by fraction found with correct/wrong/missed breakdown. |
+| **Hooks** | Given a word, name front hooks (letters BEFORE) and back hooks (letters AFTER) in separate inputs. All 28 tile types including digraphs. Scored by completeness. |
+| **Pattern** | Word with ~40% of letters blanked (high-value first). Point value shown as hint. Accepts any valid word matching the visible pattern and points. |
+| **Derivations** | Given a word (e.g., COCAL), list all longer words formed by extending it (COCALERA, COCALERO). Scored by fraction found. |
+| **Transformation** | Given a word with one position blanked, name valid replacement letters. Scored by completeness. |
+| **Extension** | Given a word with an insertion slot, name valid letters to insert. Scored by completeness. |
 | **Reduction** | Given a word, identify which letter(s) can be removed to leave a valid word. Scored by completeness. |
 
-All modes show full reveal info after each card: hooks, prefix, suffix, ending, verb type, anagrams, and point value.
+All modes show full reveal info after each card: hooks, prefix, suffix, ending, verb type, anagrams, point value, and links to RAE/Wikcionario/Wikipedia.
 
 ### Preset Decks
 
@@ -201,9 +201,9 @@ word_analysis.csv               ▼
 | 3 | v, ch, y, q, f, h | Less common |
 | 4 | rr, ll, j, x, z, ñ | Rare |
 
-## Web UI
+## Web UI (Lexicable)
 
-The study tool has a web interface accessible from any browser.
+The study tool has a web interface accessible from any browser. All text in Spanish, dark theme.
 
 ```bash
 cd scrabble
@@ -211,11 +211,13 @@ python -m study.web.server --port 8080
 # Open http://localhost:8080
 ```
 
-**Explorer**: Type any word to check validity, see points, hooks, prefix/suffix, and expand transformations/extensions/reductions.
+**Tabs:**
 
-**Quiz**: Select a mode (8 available), pick a deck by category, set session size, and study with Scrabble-tile-styled cards. SRS progress is tracked across sessions.
-
-All text is in Spanish. Dark theme, responsive layout.
+- **Explorador**: Type any word to check validity, see points, hooks, morphology (resolved suffixes like -ena not -enV), anagrams, SRS review history, and links to RAE/Wikcionario/Wikipedia. Expandable sections for transformations, extensions, and reductions. Handles accented input (café→cafe).
+- **Quiz**: Select a mode (8 available), pick a deck by category (labels in Spanish), set session size. Scrabble-tile-styled cards with progress bar. Clickable stats panel shows word-level detail (studied/due/mastered/struggling). Non-verb decks clarified with note.
+- **Historial**: Session history log with date, mode, deck, cards reviewed, average quality, correct/struggling words. Export as CSV.
+- **Instrucciones**: Full user guide for the explorer, all quiz modes, deck categories, SRS system, and input formats.
+- **Más Información**: Version, author (Hector Klie), organization (USA Lexico).
 
 ## Module Structure
 

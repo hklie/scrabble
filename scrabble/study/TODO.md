@@ -45,11 +45,11 @@ Todo funciona via CLI (`python -m study.quiz`):
 
 | # | Tarea | Esfuerzo | Dependencias | Estado |
 |---|-------|----------|-------------|--------|
-| 5 | Refactorizar lógica de quiz en `quiz_engine.py` (desacoplar de terminal) | Medio | Ninguna | |
-| 6 | Backend web: FastAPI REST API + WebSocket para quiz | Medio | Tarea 5 | |
-| 7 | Frontend: Explorador de palabras (validar/transformar/extender/reducir) | Medio | Tarea 6 | |
-| 8 | Frontend: Página de quiz con 8 modos + selector de mazos + SRS | Grande | Tarea 6 | |
-| 9 | Frontend: Dashboard (progreso, pendientes, estadísticas) | Pequeño | Tarea 8 | |
+| 5 | Backend web: FastAPI REST API para quiz (sin WebSocket — REST suficiente) | Medio | Ninguna | ✅ Done |
+| 6 | Frontend: Explorador con validación, ganchos, morfología, anagramas, transforms, RAE/Wiki links, historial SRS | Medio | Tarea 5 | ✅ Done |
+| 7 | Frontend: Quiz con 8 modos + selector de mazos + SRS + normalización de acentos | Grande | Tarea 5 | ✅ Done |
+| 8 | Frontend: Stats clickables con detalle por palabra + historial de sesiones + CSV export | Medio | Tarea 7 | ✅ Done |
+| 9 | Branding Lexicable, instrucciones, más información, etiquetas en español | Pequeño | Tarea 7 | ✅ Done |
 
 ### Fase 1: Backend API
 
