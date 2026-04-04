@@ -254,6 +254,37 @@ El usuario debe poder crear sus propias listas de palabras y personalizar qué p
 | B3.14 | Endpoint: prefijos/sufijos disponibles | Pequeño | `GET /api/prefijos` y `GET /api/sufijos` con conteo de palabras por cada uno |
 | B3.15 | Endpoint: generar mazo con filtros combinados | Pequeño | `POST /api/mazos/personalizado` con filtros → retorna mazo al vuelo |
 
+### Exportación de mazos
+
+| # | Tarea | Esfuerzo | Descripción |
+|---|-------|----------|-------------|
+| B3.16 | Exportar mazo como .txt | Pequeño | `GET /api/mazo/{id}/exportar?formato=txt` → descarga archivo .txt con una palabra por línea. Incluir nombre del mazo y conteo de palabras en el encabezado |
+| B3.17 | Exportar mazo como .pdf (compacto) | Medio | `GET /api/mazo/{id}/exportar?formato=pdf` → genera PDF con diseño compacto multi-columna (3-4 columnas) para minimizar páginas. Encabezado con nombre del mazo, fecha, conteo. Pie de página con "Lexicable — USA Lexico". Usar fuente pequeña (8-9pt) con espaciado mínimo. Para un mazo de 400 palabras, idealmente no más de 2-3 páginas |
+| B3.18 | Botón de exportar en la UI | Pequeño | En el selector de mazos, agregar ícono/botón de descarga junto a cada mazo. Al hacer click, ofrecer formato (.txt o .pdf) |
+| B3.19 | Exportar lista personalizada | Pequeño | Misma funcionalidad de B3.16-B3.17 pero para listas creadas por el usuario |
+| B3.20 | Exportar resultados de quiz | Medio | Después del resumen de sesión, opción de descargar: palabras correctas, incorrectas, en dificultad, con puntuación y estadísticas SRS. Formatos: .txt y .pdf |
+
+#### Diseño del PDF compacto
+
+```
+┌──────────────────────────────────────────────────┐
+│  Lexicable — Palabras de 5 letras (4,963)        │
+│  Generado: Abril 2026                            │
+├────────────┬────────────┬────────────┬───────────┤
+│ ABACO  10  │ ACANA   7  │ ADRAL   6  │ AGORA  5  │
+│ ABADA   8  │ ACARO   7  │ AFIJO  14  │ AGUJA  12 │
+│ ABAJE   13 │ ACEBO   9  │ AGAVE   8  │ AHORA  8  │
+│ ...        │ ...        │ ...        │ ...       │
+├────────────┴────────────┴────────────┴───────────┤
+│  Lexicable — USA Lexico            Pág 1 de 3    │
+└──────────────────────────────────────────────────┘
+```
+
+- 4 columnas con palabra + puntos
+- Fuente monoespaciada 8pt
+- Márgenes reducidos
+- ~120 palabras por página → 400 palabras en ~4 páginas
+
 ---
 
 ## Milestone C — Móvil y Pulido
