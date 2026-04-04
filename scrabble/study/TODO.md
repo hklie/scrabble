@@ -309,8 +309,48 @@ Actualmente el sistema solo sabe si una palabra es válida, su valor en puntos, 
 | 16 | Mostrar definiciones en el quiz (reveal) | Pequeño | Panel de revelación incluye definición después de cada tarjeta en todos los modos |
 | 17 | Imágenes/thumbnails para sustantivos | Grande | Generar o buscar imágenes para sustantivos comunes. Vincular con definiciones. Mostrar en explorador y reveal |
 | 18 | Mnemónicos para palabras difíciles | Medio | Sistema de ayudas de memoria: frases cortas, asociaciones, contexto ("YANGÜES = pueblo de Don Quijote"). Pueden ser generados por IA o contribuidos por la comunidad |
-| 19 | Categorías semánticas | Medio | Clasificar palabras por campo semántico (animales, plantas, geografía, etc.) para crear mazos temáticos de estudio |
+| 19 | Categorías semánticas manuales | Medio | Clasificar palabras por campo semántico (animales, plantas, geografía, etc.) para crear mazos temáticos de estudio |
 | 20 | Importar/exportar definiciones | Pequeño | Formato JSON/CSV para compartir definiciones entre usuarios o clubs |
+
+### Categorización Automática por Scraping de Definiciones
+
+**Idea:** Barrer el léxico de no-verbos y extraer categorías semánticas automáticamente a partir de las definiciones del RAE (u otra fuente). Por ejemplo, si la definición de ABADEJO empieza con "Pez de la familia...", se clasifica como categoría "peces".
+
+| # | Tarea | Esfuerzo | Descripción |
+|---|-------|----------|-------------|
+| 21 | Scraper de definiciones RAE | Grande | Script que consulta `dle.rae.es/{palabra}` para cada palabra del léxico, extrae la primera acepción (texto corto), y guarda en `definitions.json`. Respetar rate limits (1 req/seg). Para ~93K palabras serían ~26 horas continuas; ejecutar por lotes o priorizar palabras de 3-8 letras (~40K) |
+| 22 | Extractor de categorías desde definiciones | Medio | Analizar el texto de cada definición buscando patrones comunes del RAE: "Pez..." → peces, "Ave..." → aves, "Planta..." → plantas, "Árbol..." → árboles, "Insecto..." → insectos, "Mamífero..." → mamíferos, "Molusco..." → moluscos, "País..." → geografía, "Mineral..." → minerales, "Instrumento..." → instrumentos, etc. Usar regex o NLP básico |
+| 23 | Categorías alternativas desde Wikcionario | Medio | Wikcionario es scrappeable legalmente (CC BY-SA). Las páginas incluyen categorías como "ES:Peces", "ES:Botánica", "ES:Música". Extraer estas categorías directamente del HTML |
+| 24 | Categorías por IA generativa | Medio | Para palabras sin definición en RAE/Wikcionario, usar un LLM para clasificar: "¿A qué campo semántico pertenece la palabra ABADEJO?" → "peces". Más rápido pero requiere verificación |
+| 25 | Índice de categorías → palabras | Pequeño | Invertir el mapping: dado "peces" → lista de todas las palabras clasificadas como peces. Guardar en `categories.json` |
+| 26 | Mazos temáticos automáticos | Pequeño | En la UI, nueva sección de mazos "Por tema": Peces (145), Aves (230), Plantas (180), etc. Generados automáticamente desde el índice de categorías |
+| 27 | Verificación y corrección de categorías | Medio | Interfaz para revisar y corregir categorías incorrectas. Las definiciones del RAE a veces son ambiguas (ej: "banco" = asiento, institución financiera, o banco de peces) |
+
+**Patrones comunes en definiciones del RAE para extracción automática:**
+
+| Patrón en definición | Categoría |
+|---------------------|-----------|
+| "Pez de..." / "Pez que..." | peces |
+| "Ave de..." / "Ave que..." | aves |
+| "Planta de..." / "Planta que..." | plantas |
+| "Árbol de..." / "Árbol que..." | árboles |
+| "Insecto de..." / "Insecto que..." | insectos |
+| "Mamífero de..." / "Mamífero que..." | mamíferos |
+| "Reptil de..." / "Reptil que..." | reptiles |
+| "Molusco..." | moluscos |
+| "Mineral de..." | minerales |
+| "Instrumento de..." / "Instrumento que..." | instrumentos |
+| "Tela de..." / "Tejido de..." | textiles |
+| "Embarcación..." / "Barco..." | embarcaciones |
+| "Moneda..." | monedas |
+| "Juego de..." | juegos |
+| adj. "Natural de..." / "Perteneciente a..." | gentilicios |
+
+**Estrategia sugerida:**
+1. Empezar con Wikcionario (legal, categorías explícitas) para cobertura parcial
+2. Complementar con RAE scraping por lotes (respetar rate limits)
+3. Usar IA para las palabras restantes sin categorizar
+4. Revisión manual de las categorías más grandes (peces, aves, plantas)
 
 ### Fuentes de Datos Posibles
 
