@@ -529,7 +529,7 @@ def rename_lista(list_id: str, req: CustomListRequest):
 
 @app.get("/api/prefijos")
 def get_prefijos():
-    """Return all prefixes with word counts."""
+    """Return all prefixes with word counts, alphabetically sorted."""
     prefix_counts = {}
     for c in all_cards:
         p = c.get("prefix", "")
@@ -539,26 +539,29 @@ def get_prefijos():
             prefix_counts[resolved]["count"] += 1
     result = [{"prefix": k, "pattern": v["pattern"], "count": v["count"]}
               for k, v in sorted(prefix_counts.items(),
-                                  key=lambda x: -x[1]["count"])]
+                                  key=lambda x: x[0])]
     return {"prefixes": result, "total": len(result)}
 
 
 @app.get("/api/sufijos")
 def get_sufijos():
-    """Return all suffixes with word counts."""
+    """Return all suffixes with word counts, alphabetically sorted.
+    Excludes abstract patterns CC and VV."""
+    # Patterns to exclude (abstract, not real suffixes)
+    EXCLUDE_PATTERNS = {"CC", "VV"}
+
     suffix_counts = {}
     for c in all_cards:
         s = c.get("suffix", "")
-        if s:
+        if s and s not in EXCLUDE_PATTERNS:
             resolved = _resolve_suffix(c["word"], s)
-            # Group by pattern for consistency
             key = s  # use pattern as key
             if key not in suffix_counts:
                 suffix_counts[key] = {"example": resolved, "count": 0}
             suffix_counts[key]["count"] += 1
     result = [{"suffix": v["example"], "pattern": k, "count": v["count"]}
               for k, v in sorted(suffix_counts.items(),
-                                  key=lambda x: -x[1]["count"])]
+                                  key=lambda x: x[1]["example"])]
     return {"suffixes": result, "total": len(result)}
 
 
