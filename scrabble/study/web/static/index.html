@@ -708,11 +708,11 @@ async function loadDecks() {
       html += `<h3>${cat.name}</h3><div class="deck-grid">`;
       cat.decks.forEach(dk => {
         const isPreset = !dk.id.startsWith('custom:');
-        const exportBtns = isPreset ? `<span style="float:right;margin-left:6px">` +
-          `<a href="/api/mazo/${dk.id}/csv" download title="CSV" onclick="event.stopPropagation()" style="color:#4ecca3;font-size:0.75em;margin-right:4px">csv</a>` +
-          `<a href="/api/mazo/${dk.id}/txt" download title="TXT" onclick="event.stopPropagation()" style="color:#4ecca3;font-size:0.75em">txt</a></span>` : '';
+        const exportBtns = isPreset ? ` <span onclick="event.stopPropagation()" style="font-size:0.7em;margin-left:6px">` +
+          `<a href="/api/mazo/${dk.id}/csv" download="mazo_${dk.id}.csv" style="color:#4ecca3;text-decoration:underline">csv</a> ` +
+          `<a href="/api/mazo/${dk.id}/txt" download="mazo_${dk.id}.txt" style="color:#4ecca3;text-decoration:underline">txt</a></span>` : '';
         html += `<div class="deck-btn" onclick="selectDeck('${dk.id}', this)">
-          ${dk.label} <span class="count">${dk.count}</span>${exportBtns}</div>`;
+          <span>${dk.label}</span> <span class="count">${dk.count}</span>${exportBtns}</div>`;
       });
       html += '</div>';
     });
