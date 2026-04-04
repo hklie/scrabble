@@ -577,33 +577,27 @@ def get_sufijos():
     Excludes abstract patterns CC and VV. Shows vowel variants."""
     EXCLUDE_PATTERNS = {"CC", "VV"}
 
-    suffix_data = {}  # pattern -> {variants: set, count: int}
+    # Count each resolved suffix individually (separate -ana from -ano)
+    # Only include common vowel variants (a, o, e) — skip rare ones (i, u)
+    COMMON_ENDINGS = {"a", "o", "e"}  # main vowel variants; skip i, u
+
+    variant_counts = {}  # resolved_suffix -> {pattern, count}
     for c in all_cards:
         s = c.get("suffix", "")
         if s and s not in EXCLUDE_PATTERNS:
             resolved = _resolve_suffix(c["word"], s)
-            if s not in suffix_data:
-                suffix_data[s] = {"variants": set(), "count": 0}
-            suffix_data[s]["variants"].add(resolved)
-            suffix_data[s]["count"] += 1
+            # For V-ending patterns, only keep a/o/e variants
+            if "V" in s and resolved and resolved[-1] not in COMMON_ENDINGS:
+                continue
+            if resolved not in variant_counts:
+                variant_counts[resolved] = {"pattern": s, "count": 0}
+            variant_counts[resolved]["count"] += 1
 
-    result = []
-    for pattern, data in suffix_data.items():
-        variants = sorted(data["variants"])
-        # Build compact label: find common base, list differing endings
-        if len(variants) > 1 and "V" in pattern:
-            # Extract the base (everything except last char) and list endings
-            base = variants[0][:-1]
-            endings = [v[-1] for v in variants]
-            label = f"-{base},{','.join(endings)}"
-        else:
-            label = f"-{variants[0]}"
-        result.append({
-            "suffix": label, "pattern": pattern,
-            "count": data["count"], "variants": variants,
-        })
-
-    result.sort(key=lambda x: x["variants"][0])
+    # Filter out variants with very few words (< 10)
+    result = [{"suffix": f"-{k}", "resolved": k, "pattern": v["pattern"],
+               "count": v["count"]}
+              for k, v in sorted(variant_counts.items())
+              if v["count"] >= 15]
     return {"suffixes": result, "total": len(result)}
 
 
@@ -622,8 +616,13 @@ def get_prefix_words(prefix: str):
 
 @app.get("/api/sufijos/{suffix}/palabras")
 def get_suffix_words(suffix: str):
-    """Return words matching a suffix pattern."""
+    """Return words matching a suffix. Accepts pattern (anV) or resolved (ana)."""
+    # Try as pattern first
     words = [c for c in all_cards if c.get("suffix", "") == suffix]
+    # If no results, try matching resolved suffix
+    if not words:
+        words = [c for c in all_cards
+                 if _resolve_suffix(c["word"], c.get("suffix", "")) == suffix]
     result = [{"word": c["word"], "value": c["value"], "length": c["length"]}
               for c in words]
     return {"suffix": suffix, "count": len(result), "words": result}
@@ -747,7 +746,12 @@ def _resolve_deck(deck_id, min_length=None, max_length=None):
         return [c for c in all_cards if c.get("prefix", "") == prefix]
     elif deck_id.startswith("suffix:"):
         suffix = deck_id[7:]
-        return [c for c in all_cards if c.get("suffix", "") == suffix]
+        # Try as pattern first, then as resolved suffix
+        result = [c for c in all_cards if c.get("suffix", "") == suffix]
+        if not result:
+            result = [c for c in all_cards
+                      if _resolve_suffix(c["word"], c.get("suffix", "")) == suffix]
+        return result
     elif deck_id.startswith("ending:"):
         parts = deck_id[7:].split(":")
         ending = parts[0]

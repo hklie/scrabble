@@ -1319,8 +1319,9 @@ async function loadSuffixes() {
     let html = `<p style="color:#aaa;font-size:0.8em">${d.total} sufijos. Click para usar como mazo.</p>`;
     html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">';
     d.suffixes.forEach(s => {
+      const resolved = s.resolved || s.suffix.replace('-','');
       html += `<span class="deck-btn" style="padding:3px 8px;font-size:0.8em;display:inline-block" `+
-        `onclick="selectDeckDynamic('suffix:${s.pattern}','Sufijo: ${s.suffix}')">` +
+        `onclick="selectDeckDynamic('suffix:${resolved}','Sufijo: ${s.suffix}')">` +
         `${s.suffix} <span style="color:#4ecca3;font-size:0.85em">${s.count}</span></span>`;
     });
     html += '</div>';
