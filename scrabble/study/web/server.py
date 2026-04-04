@@ -450,6 +450,26 @@ def export_deck_csv(deck_id: str):
     )
 
 
+# ── Dynamic deck word listing ──
+
+class DynamicDeckRequest(BaseModel):
+    deck: str
+
+
+@app.post("/api/mazo-dinamico/palabras")
+def get_dynamic_deck_words(req: DynamicDeckRequest):
+    """Return words for any deck ID (preset, custom, prefix, suffix, ending)."""
+    cards = _resolve_deck(req.deck)
+    words = []
+    for c in cards[:5000]:  # cap at 5000 for performance
+        words.append({
+            "word": c["word"],
+            "value": c["value"],
+            "length": c["length"],
+        })
+    return {"deck": req.deck, "count": len(cards), "words": words}
+
+
 # ── Custom lists ──
 
 @app.get("/api/listas")

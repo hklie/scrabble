@@ -1285,16 +1285,49 @@ async function searchByEnding() {
   } catch(e) { el.innerHTML = '<p style="color:#e94560">Error</p>'; }
 }
 
-function selectDeckDynamic(id, label) {
+async function selectDeckDynamic(id, label) {
   selectedDeck = id;
   document.querySelectorAll('.deck-btn').forEach(b => b.style.borderColor = '#333');
   checkStartReady();
-  // Show a confirmation
+
+  // Load word list for this dynamic deck
   const dc = document.getElementById('deck-contents');
-  if (dc) {
-    dc.style.display = 'block';
-    dc.innerHTML = `<div style="background:#0f3460;padding:10px;border-radius:6px;text-align:center">` +
-      `<span style="color:#4ecca3;font-weight:bold">${label}</span> seleccionado como mazo</div>`;
+  if (!dc) return;
+  dc.style.display = 'block';
+  dc.innerHTML = '<p style="color:#aaa">Cargando palabras...</p>';
+
+  try {
+    const r = await fetch(API + '/api/mazo-dinamico/palabras', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({deck: id})
+    });
+    const d = await r.json();
+
+    let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">`;
+    html += `<h3 style="color:#4ecca3;margin:0">${label} (${d.count} palabras)</h3>`;
+    html += `</div>`;
+    if (!selectedMode) {
+      html += `<p style="color:#aaa;font-size:0.8em;margin-bottom:6px">Selecciona un modo de quiz arriba para estudiar este mazo. Click en palabra para explorar.</p>`;
+    }
+    html += `<div style="max-height:400px;overflow-y:auto;background:#16213e;border-radius:8px;padding:8px">`;
+    html += `<table style="width:100%;border-collapse:collapse;font-size:0.85em" id="deck-table">`;
+    html += `<thead><tr>`;
+    html += `<th style="padding:6px 8px;color:#4ecca3;border-bottom:1px solid #333;text-align:left">Palabra</th>`;
+    html += `<th style="padding:6px 8px;color:#4ecca3;border-bottom:1px solid #333;text-align:right">Pts</th>`;
+    html += `<th style="padding:6px 8px;color:#4ecca3;border-bottom:1px solid #333;text-align:right">Long</th>`;
+    html += `</tr></thead><tbody>`;
+    d.words.forEach(w => {
+      html += `<tr>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid #222"><span class="word-link" onclick="exploreFromStats('${w.word}')">${w.word.toUpperCase()}</span></td>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid #222;text-align:right;color:#aaa">${w.value}</td>`;
+      html += `<td style="padding:4px 8px;border-bottom:1px solid #222;text-align:right;color:#aaa">${w.length}</td>`;
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+    dc.innerHTML = html;
+  } catch(e) {
+    dc.innerHTML = '<p style="color:#e94560">Error cargando mazo</p>';
   }
 }
 
