@@ -242,16 +242,17 @@ El usuario debe poder crear sus propias listas de palabras y personalizar qué p
 | B3.7 | Selector de sufijos para estudio | Medio | Igual que B3.6 pero con `config.EXTENSIVE_SUFIXES`. Incluye sufijos con variantes vocálicas (erV, illV, etc.) |
 | B3.8 | Filtros combinados | Medio | Combinar prefijo + sufijo + longitud + terminación + nivel consonántico en un solo filtro personalizado. Guardar filtros favoritos para reutilizar |
 | B3.9 | Generador de mazos por terminación | Pequeño | Seleccionar una o varias terminaciones (ej: L, N, R, Z, D) y una longitud para generar un mazo al vuelo |
-| B3.10 | Estudio por familias de palabras | Medio | Dado un prefijo o sufijo, mostrar todas las palabras agrupadas por raíz común. Útil para memorizar familias morfológicas completas |
+| B3.10 | Estudio por familias de palabras (raíz) | Grande | Dado un sufijo como -ero, el sistema extrae la raíz (COCAL de COCALERO), verifica si la raíz es válida, y muestra todas las palabras formadas con esa raíz + otros sufijos (COCALERA, COCALERO). Quiz: dado COCAL, ¿qué variantes con sufijos existen? Más educativo que solo buscar extensiones de cadena |
+| B3.11 | Extracción automática de raíces | Medio | Algoritmo que, dado un conjunto de sufijos conocidos (config.EXTENSIVE_SUFIXES), prueba quitar cada sufijo de una palabra para encontrar la raíz. Si la raíz es una palabra válida, se indexan todas las variantes. Ej: AGUILEÑO → raíz AGUIL (no válida) o AGUILERA → raíz AGUIL → variantes: AGUILA, AGUILEÑA, AGUILEÑO, AGUILILLA, AGUILON, AGUILUCHO |
 
 ### Backend
 
 | # | Tarea | Esfuerzo | Descripción |
 |---|-------|----------|-------------|
-| B3.11 | Endpoint: importar lista personalizada | Pequeño | `POST /api/listas` con body de palabras → valida, crea, retorna mazo |
-| B3.12 | Endpoint: listar/gestionar listas | Pequeño | `GET /api/listas`, `DELETE /api/listas/{id}`, `PUT /api/listas/{id}` |
-| B3.13 | Endpoint: prefijos/sufijos disponibles | Pequeño | `GET /api/prefijos` y `GET /api/sufijos` con conteo de palabras por cada uno |
-| B3.14 | Endpoint: generar mazo con filtros combinados | Pequeño | `POST /api/mazos/personalizado` con filtros → retorna mazo al vuelo |
+| B3.12 | Endpoint: importar lista personalizada | Pequeño | `POST /api/listas` con body de palabras → valida, crea, retorna mazo |
+| B3.13 | Endpoint: listar/gestionar listas | Pequeño | `GET /api/listas`, `DELETE /api/listas/{id}`, `PUT /api/listas/{id}` |
+| B3.14 | Endpoint: prefijos/sufijos disponibles | Pequeño | `GET /api/prefijos` y `GET /api/sufijos` con conteo de palabras por cada uno |
+| B3.15 | Endpoint: generar mazo con filtros combinados | Pequeño | `POST /api/mazos/personalizado` con filtros → retorna mazo al vuelo |
 
 ---
 

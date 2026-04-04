@@ -442,7 +442,7 @@ const MODES = [
   {id:'anagram', name:'Anagrama', desc:'Letras desordenadas → palabra'},
   {id:'hooks', name:'Ganchos', desc:'Letras que se enganchan'},
   {id:'pattern', name:'Patrón', desc:'Completar letras ocultas'},
-  {id:'morphology', name:'Morfología', desc:'Identificar prefijo/sufijo'},
+  {id:'morphology', name:'Derivaciones', desc:'Palabras que se forman extendiendo'},
   {id:'transformation', name:'Transformación', desc:'Cambiar una letra'},
   {id:'extension', name:'Extensión', desc:'Insertar una letra'},
   {id:'reduction', name:'Reducción', desc:'Eliminar una letra'},
@@ -584,17 +584,12 @@ function renderCard(card) {
   } else if (card.prompt_type === 'morphology') {
     html += `<div class="big">${card.word_display}</div>`;
     html += `<div class="hint">${card.length} letras | ${card.value} pts</div>`;
+    html += `<div class="hint">¿Qué palabras se pueden formar extendiendo <b>${card.word_display}</b>?</div>`;
+    html += `<div class="hint" style="color:#4ecca3">(${card.derivation_count} derivaciones)</div>`;
     html += `</div>`;
-    if (card.has_prefix) {
-      html += `<div style="margin:8px 0"><label style="color:#aaa;font-size:0.85em">Prefijo (ej: re, des, bi, tri):</label>`;
-      html += `<input type="text" id="morph-prefix" placeholder="prefijo..." autocomplete="off"></div>`;
-    }
-    if (card.has_suffix) {
-      html += `<div style="margin:8px 0"><label style="color:#aaa;font-size:0.85em">Sufijo (ej: ción, dor, ble, era, al):</label>`;
-      html += `<input type="text" id="morph-suffix" placeholder="sufijo..." autocomplete="off"></div>`;
-    }
+    html += `<div style="margin:12px 0"><input type="text" id="quiz-input" placeholder="palabra1, palabra2, ..." autocomplete="off"></div>`;
     html += `<div class="quiz-actions">`;
-    html += `<button class="btn btn-primary" onclick="submitMorphology()">Enviar</button>`;
+    html += `<button class="btn btn-primary" onclick="submitFromInput()">Enviar</button>`;
     html += `<button class="btn btn-secondary" onclick="submitAnswer('?')">Revelar</button></div>`;
 
   } else if (card.prompt_type === 'transformation') {
@@ -650,21 +645,6 @@ function renderCard(card) {
       if (e.key === 'Enter') submitHooks();
     });
   }
-  // Morphology: focus first available input, Enter on last submits
-  const mp = document.getElementById('morph-prefix');
-  const ms = document.getElementById('morph-suffix');
-  if (mp) {
-    mp.focus();
-    mp.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { if (ms) ms.focus(); else submitMorphology(); }
-    });
-  }
-  if (ms) {
-    if (!mp) ms.focus();
-    ms.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') submitMorphology();
-    });
-  }
 }
 
 function submitFromInput() {
@@ -680,13 +660,6 @@ function submitHooks() {
   submitAnswer(frontVal + '|' + backVal);
 }
 
-function submitMorphology() {
-  const pre = document.getElementById('morph-prefix');
-  const suf = document.getElementById('morph-suffix');
-  const preVal = pre ? pre.value.trim() : '';
-  const sufVal = suf ? suf.value.trim() : '';
-  submitAnswer(preVal + ',' + sufVal);
-}
 
 async function submitAnswer(answer) {
   try {
@@ -778,6 +751,11 @@ function showResult(d) {
     if (rv.all_anagrams && rv.all_anagrams.length > 0 && !rv.correct_words) {
       html += '<div style="margin-top:8px"><span class="label">Anagramas válidos:</span> ';
       html += rv.all_anagrams.map(w => `<b>${w.toUpperCase()}</b>`).join(', ');
+      html += '</div>';
+    }
+    if (rv.all_derivations && rv.all_derivations.length > 0 && !rv.correct_words) {
+      html += '<div style="margin-top:8px"><span class="label">Derivaciones:</span> ';
+      html += rv.all_derivations.map(w => `<b>${w.toUpperCase()}</b>`).join(', ');
       html += '</div>';
     }
 

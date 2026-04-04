@@ -68,6 +68,9 @@ def startup():
     print("Building anagram index...", end=" ", flush=True)
     _build_anagram_index()
     print(f"{len(_anagram_index)} anagram groups.")
+    print("Building extension index...", end=" ", flush=True)
+    _build_extension_index()
+    print(f"{len(_extension_index)} words with derivations.")
 
 
 # ── Pydantic models ──
@@ -149,6 +152,31 @@ def _build_anagram_index():
     for v in all_verbs:
         key = tuple(sorted(v["tokens"]))
         _anagram_index.setdefault(key, []).append(v["word"])
+
+
+# Word extension index: word -> list of longer words that start with it
+_extension_index = {}
+
+
+def _build_extension_index():
+    """Build index for word family/derivation lookup using sorted list + bisect."""
+    global _extension_index
+    import bisect
+    all_words_set = set(c["word"] for c in all_cards)
+    all_words_set.update(v["word"] for v in all_verbs)
+    sorted_words = sorted(all_words_set)
+
+    for word in sorted_words:
+        # Use bisect to find the range of words starting with this word
+        lo = bisect.bisect_left(sorted_words, word)
+        # Upper bound: word with last char incremented
+        hi_key = word[:-1] + chr(ord(word[-1]) + 1)
+        hi = bisect.bisect_left(sorted_words, hi_key)
+        exts = [sorted_words[i] for i in range(lo, hi)
+                if sorted_words[i] != word
+                and len(sorted_words[i]) <= len(word) + 6]
+        if exts:
+            _extension_index[word] = exts
 
 
 # ── Word explorer endpoints ──
@@ -360,9 +388,19 @@ def _generate_card_prompt(session, index):
         base["blanked"] = blanked_display
 
     elif mode == "morphology":
-        base["prompt_type"] = "morphology"
-        base["has_prefix"] = bool(card.get("prefix"))
-        base["has_suffix"] = bool(card.get("suffix"))
+        word = card["word"]
+        derivations = _extension_index.get(word, [])
+        if derivations:
+            # Cap at 15 for display
+            session.card_states[index] = {
+                "derivations": derivations[:15],
+                "all_derivations": set(derivations),
+            }
+            base["prompt_type"] = "morphology"
+            base["derivation_count"] = len(derivations)
+        else:
+            base["prompt_type"] = "skip"
+            base["reason"] = f"'{word.upper()}' no tiene derivaciones en el léxico."
 
     elif mode == "transformation":
         changes = one_letter_changes(card["word"], trie)
@@ -461,7 +499,7 @@ def iniciar_quiz(req: QuizStartRequest):
                       if c.get("front_hooks") or c.get("back_hooks")]
     elif req.mode == "morphology":
         pool_cards = [c for c in pool_cards
-                      if c.get("prefix") or c.get("suffix")]
+                      if c["word"] in _extension_index]
 
     pool = [c["word"] for c in pool_cards]
     session_words = build_session(progress, pool, session_size=req.size)
@@ -528,6 +566,33 @@ def responder(session_id: str, req: AnswerRequest):
 
     if answer == "?":
         quality = 0
+        # Enrich reveal with mode-specific data
+        cs = session.card_states.get(idx, {})
+        if mode == "anagram":
+            anagram_key = tuple(sorted(tokens))
+            reveal_data["all_anagrams"] = sorted(_anagram_index.get(anagram_key, []))
+        elif mode == "morphology":
+            reveal_data["all_derivations"] = sorted(cs.get("all_derivations", set()))[:15]
+        elif mode in ("transformation", "extension", "reduction"):
+            if mode == "transformation":
+                reveal_data["changes"] = [
+                    {"replacement": c["replacement"].upper(),
+                     "word": c["word"].upper(), "value": c["value"]}
+                    for c in cs.get("changes", [])
+                ]
+            elif mode == "extension":
+                reveal_data["inserts"] = [
+                    {"inserted": i["inserted"].upper(),
+                     "word": i["word"].upper(), "value": i["value"]}
+                    for i in cs.get("inserts", [])
+                ]
+            elif mode == "reduction":
+                reveal_data["removals"] = [
+                    {"removed": r["removed"].upper(),
+                     "word": r["word"].upper(), "value": r["value"],
+                     "position": r["position"]}
+                    for r in cs.get("removals", [])
+                ]
         return _apply_and_advance(session, card, quality, reveal_data,
                                   correct=False, skipped=True)
 
@@ -635,30 +700,35 @@ def responder(session_id: str, req: AnswerRequest):
             return {"correct": False, "can_retry": True, "hint": hint}
 
     elif mode == "morphology":
-        parts = [p.strip() for p in answer.split(",")]
-        prefix_ans = parts[0] if len(parts) > 0 else ""
-        suffix_ans = parts[1] if len(parts) > 1 else ""
-        word = card["word"]
+        # User submits derivations (comma or space separated)
+        given_words = set()
+        for part in answer.replace(",", " ").split():
+            w = part.strip().lower()
+            if w:
+                given_words.add(w)
 
-        scores = []
-        details = []
-        if card.get("prefix"):
-            raw = card["prefix"]
-            resolved = _resolve_prefix(word, raw)
-            ok = prefix_ans in (raw, resolved)
-            scores.append(1.0 if ok else 0.0)
-            details.append(f"Prefijo: {resolved}" + (" ✓" if ok else " ✗"))
-        if card.get("suffix"):
-            raw = card["suffix"]
-            resolved = _resolve_suffix(word, raw)
-            ok = suffix_ans in (raw, resolved)
-            scores.append(1.0 if ok else 0.0)
-            details.append(f"Sufijo: {resolved}" + (" ✓" if ok else " ✗"))
+        cs = session.card_states.get(idx, {})
+        all_derivations = cs.get("all_derivations", set())
+        capped = cs.get("derivations", [])
 
-        avg = sum(scores) / len(scores) if scores else 0
-        quality = _quality_from_score(avg)
-        reveal_data["morphology_details"] = details
-        reveal_data["score"] = round(avg * 100)
+        correct_words = sorted(given_words & all_derivations)
+        wrong_words = sorted(given_words - all_derivations)
+        missed_words = sorted(set(capped) - given_words)
+
+        if all_derivations:
+            # Score against the capped list (max 15)
+            target = set(capped)
+            score = max(0, (len(given_words & target) - 0.5 * len(wrong_words))) / len(target)
+            score = min(1.0, score)
+        else:
+            score = 0
+
+        quality = _quality_from_score(score)
+        reveal_data["score"] = round(score * 100)
+        reveal_data["correct_words"] = correct_words
+        reveal_data["wrong_words"] = wrong_words
+        reveal_data["missed_words"] = missed_words
+        reveal_data["all_derivations"] = sorted(all_derivations)[:15]
         return _apply_and_advance(session, card, quality, reveal_data,
                                   correct=quality >= 3)
 
