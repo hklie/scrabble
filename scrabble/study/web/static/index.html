@@ -32,8 +32,15 @@ h3 { color: #aaa; font-size: 0.95em; margin: 12px 0 6px; }
 /* Stats bar */
 .stats { display: flex; justify-content: center; gap: 20px; padding: 8px; background: #16213e;
          border-radius: 8px; margin-bottom: 16px; font-size: 0.9em; flex-wrap: wrap; }
-.stats span { color: #aaa; }
+.stats span { color: #aaa; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.2s; }
+.stats span:hover { background: #0f3460; }
+.stats span.stat-active { background: #0f3460; }
 .stats b { color: #4ecca3; }
+.stats-detail { background: #16213e; border-radius: 8px; padding: 12px; margin: 8px 0; max-height: 300px; overflow-y: auto; }
+.stats-detail table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+.stats-detail th { color: #4ecca3; text-align: left; padding: 4px 8px; border-bottom: 1px solid #333; }
+.stats-detail td { padding: 4px 8px; color: #ccc; border-bottom: 1px solid #222; }
+.stats-detail .word-link { color: #4ecca3; cursor: pointer; text-decoration: underline; }
 
 /* Navigation */
 .nav { display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap; }
@@ -92,16 +99,16 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
 /* Quiz */
 .progress-bar { width: 100%; height: 6px; background: #16213e; border-radius: 3px; margin: 12px 0; }
 .progress-fill { height: 100%; background: #4ecca3; border-radius: 3px; transition: width 0.3s; }
-.quiz-prompt { text-align: center; padding: 20px 0; }
-.quiz-prompt .big { font-size: 1.8em; color: #4ecca3; font-weight: bold; margin: 8px 0; }
-.quiz-prompt .hint { color: #aaa; font-size: 0.9em; }
-.quiz-actions { display: flex; gap: 8px; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+.quiz-prompt { text-align: center; padding: 24px 0 16px; }
+.quiz-prompt .big { font-size: 2em; color: #4ecca3; font-weight: bold; margin: 12px 0; letter-spacing: 2px; }
+.quiz-prompt .hint { color: #aaa; font-size: 0.9em; margin: 4px 0; }
+.quiz-actions { display: flex; gap: 10px; justify-content: center; margin: 16px 0; flex-wrap: wrap; }
 .quality-btns { display: flex; gap: 6px; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
 .quality-btns button { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer;
                         font-size: 0.85em; background: #16213e; color: #aaa; }
 .quality-btns button:hover { background: #0f3460; color: #eee; }
-.result-ok { color: #4ecca3; font-weight: bold; text-align: center; font-size: 1.2em; margin: 8px; }
-.result-fail { color: #e94560; font-weight: bold; text-align: center; font-size: 1.2em; margin: 8px; }
+.result-ok { color: #4ecca3; font-weight: bold; text-align: center; font-size: 1.2em; margin: 12px 0; padding: 8px; background: rgba(78,204,163,0.1); border-radius: 6px; }
+.result-fail { color: #e94560; font-weight: bold; text-align: center; font-size: 1.2em; margin: 12px 0; padding: 8px; background: rgba(233,69,96,0.1); border-radius: 6px; }
 
 /* Deck selector */
 .deck-grid { display: grid; gap: 6px; margin: 8px 0; }
@@ -120,10 +127,10 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
 .mode-btn .mode-desc { font-size: 0.8em; color: #aaa; margin-top: 4px; }
 
 /* Summary */
-.summary { background: #16213e; border-radius: 8px; padding: 20px; margin: 16px 0; text-align: center; }
-.summary .big-num { font-size: 2em; color: #4ecca3; font-weight: bold; }
-.struggling-list { text-align: left; margin: 8px 0; }
-.struggling-list li { color: #e94560; margin: 2px 0; }
+.summary { background: #16213e; border-radius: 8px; padding: 24px; margin: 16px 0; text-align: center; }
+.summary .big-num { font-size: 2.5em; color: #4ecca3; font-weight: bold; }
+.struggling-list { text-align: left; margin: 12px auto; max-width: 300px; }
+.struggling-list li { color: #e94560; margin: 4px 0; font-size: 0.95em; }
 
 @media (max-width: 480px) {
   .tile { width: 36px; height: 36px; font-size: 1.1em; }
@@ -155,6 +162,7 @@ input:focus, select:focus { border-color: #4ecca3; outline: none; }
   <!-- ===== QUIZ SETUP SCREEN ===== -->
   <div class="screen" id="screen-quiz-setup">
     <div class="stats" id="stats-bar">Cargando...</div>
+    <div id="stats-detail" style="display:none"></div>
     <h2>Modo de Quiz</h2>
     <div class="mode-grid" id="mode-grid"></div>
 
@@ -309,13 +317,86 @@ async function loadStats() {
     const r = await fetch(API + '/api/progreso');
     const d = await r.json();
     document.getElementById('stats-bar').innerHTML =
-      `<span title="Total de palabras estudiadas en todos los mazos">Estudiadas: <b>${d.total}</b></span>` +
-      `<span title="Palabras que necesitan repaso hoy (SRS)">Pendientes hoy: <b>${d.due}</b></span>` +
-      `<span title="Palabras con facilidad ≥2.5 y 3+ repasos correctos">Dominadas: <b>${d.mastered}</b></span>` +
-      `<span title="Sesiones de repaso totales realizadas">Repasos: <b>${d.total_reviews}</b></span>`;
+      `<span onclick="showStatDetail('estudiadas')" title="Click para ver las palabras">Estudiadas: <b>${d.total}</b></span>` +
+      `<span onclick="showStatDetail('pendientes')" title="Click para ver las pendientes">Pendientes hoy: <b>${d.due}</b></span>` +
+      `<span onclick="showStatDetail('dominadas')" title="Click para ver las dominadas">Dominadas: <b>${d.mastered}</b></span>` +
+      `<span onclick="showStatDetail('dificultad')" title="Click para ver las difíciles">En dificultad: <b>${d.struggling}</b></span>`;
   } catch(e) {
     document.getElementById('stats-bar').textContent = 'Error cargando estadísticas';
   }
+}
+
+// ── Stats detail ──
+let activeStatCategory = '';
+
+async function showStatDetail(category) {
+  const detailEl = document.getElementById('stats-detail');
+  // Toggle off if clicking same category
+  if (activeStatCategory === category) {
+    detailEl.style.display = 'none';
+    activeStatCategory = '';
+    document.querySelectorAll('.stats span').forEach(s => s.classList.remove('stat-active'));
+    return;
+  }
+  activeStatCategory = category;
+  document.querySelectorAll('.stats span').forEach(s => s.classList.remove('stat-active'));
+
+  detailEl.style.display = 'block';
+  detailEl.innerHTML = '<p style="color:#aaa">Cargando...</p>';
+
+  try {
+    const r = await fetch(API + '/api/progreso/detalle/' + category);
+    const d = await r.json();
+
+    const titles = {
+      estudiadas: 'Todas las Palabras Estudiadas',
+      pendientes: 'Pendientes de Repaso Hoy',
+      dominadas: 'Palabras Dominadas',
+      dificultad: 'Palabras en Dificultad',
+    };
+
+    let html = `<div class="stats-detail">`;
+    html += `<h3 style="color:#4ecca3;margin-bottom:8px">${titles[category] || category} (${d.count})</h3>`;
+
+    if (d.count === 0) {
+      html += '<p style="color:#aaa">No hay palabras en esta categoría.</p>';
+    } else {
+      html += '<table><tr>';
+      html += '<th>Palabra</th>';
+      if (category === 'estudiadas') html += '<th>Facilidad</th><th>Reps</th><th>Fallos</th><th>Próximo</th>';
+      else if (category === 'pendientes') html += '<th>Facilidad</th><th>Fallos</th><th>Vence</th>';
+      else if (category === 'dominadas') html += '<th>Facilidad</th><th>Reps</th>';
+      else if (category === 'dificultad') html += '<th>Facilidad</th><th>Fallos</th><th>Reps</th>';
+      html += '</tr>';
+
+      d.words.forEach(w => {
+        html += '<tr>';
+        html += `<td><span class="word-link" onclick="exploreFromStats('${w.word}')">${w.word.toUpperCase()}</span></td>`;
+        if (category === 'estudiadas') {
+          html += `<td>${w.easiness}</td><td>${w.repetitions}</td><td>${w.lapses}</td><td>${w.next_review || '—'}</td>`;
+        } else if (category === 'pendientes') {
+          html += `<td>${w.easiness}</td><td>${w.lapses}</td><td>${w.next_review}</td>`;
+        } else if (category === 'dominadas') {
+          html += `<td>${w.easiness}</td><td>${w.repetitions}</td>`;
+        } else if (category === 'dificultad') {
+          html += `<td>${w.easiness}</td><td>${w.lapses}</td><td>${w.repetitions}</td>`;
+        }
+        html += '</tr>';
+      });
+      html += '</table>';
+    }
+    html += '</div>';
+    detailEl.innerHTML = html;
+  } catch(e) {
+    detailEl.innerHTML = '<p style="color:#e94560">Error cargando detalle</p>';
+  }
+}
+
+function exploreFromStats(word) {
+  // Switch to explorer and search the word
+  document.getElementById('search-input').value = word;
+  showScreen('explorer');
+  searchWord(word);
 }
 
 // ── Tile rendering ──
@@ -384,6 +465,20 @@ async function searchWord(word) {
     }
 
     html += '</div>';
+
+    // SRS history
+    if (d.srs) {
+      const s = d.srs;
+      const statusLabel = s.repetitions >= 3 && s.easiness >= 2.5 ? 'Dominada' :
+                          s.repetitions > 0 ? 'En aprendizaje' : 'Nueva';
+      const statusColor = statusLabel === 'Dominada' ? '#4ecca3' :
+                          statusLabel === 'En aprendizaje' ? '#f0c040' : '#aaa';
+      html += '<div style="margin-top:10px;padding:8px 12px;background:#0f3460;border-radius:6px;font-size:0.85em">';
+      html += `<span style="color:${statusColor};font-weight:bold">${statusLabel}</span>`;
+      html += ` | Repasos: ${s.total_reviews} | Fallos: ${s.lapses} | Facilidad: ${s.easiness}`;
+      if (s.next_review) html += ` | Próximo: ${s.next_review}`;
+      html += '</div>';
+    }
 
     // Anagrams (inline, already in response)
     if (d.anagram_list && d.anagram_list.length > 0) {
@@ -529,7 +624,7 @@ function renderCard(card) {
 
   if (card.prompt_type === 'skip') {
     html += `<p style="color:#aaa">${card.reason}</p>`;
-    html += `</div><div class="quiz-actions"><button class="btn btn-primary" onclick="nextCard()">Siguiente</button></div>`;
+    html += `</div><div class="quiz-actions"><button class="btn btn-primary" onclick="skipCard()">Siguiente</button></div>`;
     el.innerHTML = html;
     return;
   }
@@ -843,6 +938,15 @@ async function rateCard(quality) {
     const d = await r.json();
     if (d.done) { showSummary(d.summary); return; }
     nextCard();
+  } catch(e) { console.error(e); }
+}
+
+async function skipCard() {
+  try {
+    const r = await fetch(API + `/api/quiz/${sessionId}/saltar`, {method: 'POST'});
+    const d = await r.json();
+    if (d.done) { showSummary(d.summary); return; }
+    renderCard(d.card);
   } catch(e) { console.error(e); }
 }
 

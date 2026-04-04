@@ -106,6 +106,14 @@ class QuizSession:
 
 # ── Helpers ──
 
+# Accent normalization: strip accents except ü (preserved in lexicon)
+_ACCENT_MAP = str.maketrans("áéíóú", "aeiou")
+
+
+def _normalize_word(word):
+    """Normalize accents for lexicon lookup. Preserves ü."""
+    return word.lower().strip().translate(_ACCENT_MAP)
+
 def _resolve_suffix(word, pattern):
     """Resolve a suffix pattern like 'enV' to the actual suffix 'ena' for a word."""
     if not pattern or not word:
@@ -183,7 +191,7 @@ def _build_extension_index():
 
 @app.get("/api/validar/{word}")
 def validar_word(word: str):
-    word = word.strip().lower()
+    word = _normalize_word(word)
     tokens = tokenize_word(word)
     valid = _word_in_trie(trie, tokens)
     value = sum(INTERNAL_POINTS.get(t, 0) for t in tokens)
@@ -224,12 +232,25 @@ def validar_word(word: str):
             "verb_type": "",
         })
 
+    # SRS history for this word
+    srs = progress.get(word)
+    if srs:
+        result["srs"] = {
+            "easiness": round(srs.easiness, 2),
+            "interval": srs.interval,
+            "repetitions": srs.repetitions,
+            "next_review": srs.next_review,
+            "last_review": srs.last_review,
+            "total_reviews": srs.total_reviews,
+            "lapses": srs.lapses,
+        }
+
     return result
 
 
 @app.get("/api/transformar/{word}")
 def transformar_word(word: str):
-    word = word.strip().lower()
+    word = _normalize_word(word)
     results = one_letter_changes(word, trie)
     # Group by position
     by_pos = {}
@@ -240,7 +261,7 @@ def transformar_word(word: str):
 
 @app.get("/api/extender/{word}")
 def extender_word(word: str):
-    word = word.strip().lower()
+    word = _normalize_word(word)
     results = insert_letter(word, trie)
     by_pos = {}
     for r in results:
@@ -250,7 +271,7 @@ def extender_word(word: str):
 
 @app.get("/api/reducir/{word}")
 def reducir_word(word: str):
-    word = word.strip().lower()
+    word = _normalize_word(word)
     results = remove_letter(word, trie)
     return {"word": word, "count": len(results), "results": results}
 
@@ -331,6 +352,55 @@ def progreso():
         "mastered": mastered, "learning": learning,
         "struggling": struggling, "avg_ef": round(avg_ef, 2),
     }
+
+
+@app.get("/api/progreso/detalle/{category}")
+def progreso_detalle(category: str):
+    """Return word lists for a progress category."""
+    from datetime import date
+    today = date.today()
+
+    words = []
+    if category == "estudiadas":
+        for word, s in sorted(progress.items()):
+            words.append({
+                "word": word, "easiness": round(s.easiness, 2),
+                "repetitions": s.repetitions, "lapses": s.lapses,
+                "next_review": s.next_review, "total_reviews": s.total_reviews,
+            })
+    elif category == "pendientes":
+        due = get_due_cards(progress, today)
+        for word in due:
+            s = progress[word]
+            words.append({
+                "word": word, "easiness": round(s.easiness, 2),
+                "next_review": s.next_review, "lapses": s.lapses,
+            })
+    elif category == "dominadas":
+        for word, s in sorted(progress.items()):
+            if s.easiness >= 2.5 and s.repetitions >= 3:
+                words.append({
+                    "word": word, "easiness": round(s.easiness, 2),
+                    "repetitions": s.repetitions,
+                })
+    elif category == "dificultad":
+        for word, s in sorted(progress.items()):
+            if s.easiness < 1.8:
+                words.append({
+                    "word": word, "easiness": round(s.easiness, 2),
+                    "lapses": s.lapses, "repetitions": s.repetitions,
+                })
+    elif category == "aprendizaje":
+        for word, s in sorted(progress.items()):
+            if 0 < s.repetitions < 3:
+                words.append({
+                    "word": word, "easiness": round(s.easiness, 2),
+                    "repetitions": s.repetitions, "next_review": s.next_review,
+                })
+    else:
+        return JSONResponse({"error": "Categoría no válida."}, 400)
+
+    return {"category": category, "count": len(words), "words": words}
 
 
 # ── Quiz session management ──
@@ -802,6 +872,20 @@ def calificar(session_id: str, req: RateRequest):
     reveal_data = _build_reveal(card)
     return _apply_and_advance(session, card, quality, reveal_data,
                               correct=quality >= 3)
+
+
+@app.post("/api/quiz/{session_id}/saltar")
+def saltar(session_id: str):
+    """Skip the current card (no SRS update) and advance."""
+    session = sessions.get(session_id)
+    if not session:
+        return JSONResponse({"error": "Sesión no encontrada."}, 404)
+    session.current_index += 1
+    session.attempt = 0
+    if session.current_index >= len(session.cards):
+        return _session_summary(session)
+    prompt = _generate_card_prompt(session, session.current_index)
+    return {"card": prompt}
 
 
 @app.get("/api/quiz/{session_id}/siguiente")
