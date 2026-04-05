@@ -293,7 +293,9 @@ def do_export():
     exporters = {'csv': export_csv, 'excel': export_excel,
                  'html': export_html, 'graphical': export_graphical}
     exporter = exporters.get(fmt, export_csv)
-    exporter(players, game.master_scores, game.round_num, filepath)
+    player_plays = getattr(game, '_player_plays', None)
+    exporter(players, game.master_scores, game.round_num, filepath,
+             player_plays=player_plays)
     print(f"  Resultados exportados: {filepath}")
     return filepath
 
@@ -337,6 +339,12 @@ async def start_round():
         bag_consonants = sum(1 for t in game.bag if t not in VOWELS and t != '?')
         bag_blanks = sum(1 for t in game.bag if t == '?')
 
+        # Rack composition
+        rack_vowels = sum(1 for t in game.rack if to_display(t) in VOWELS)
+        rack_consonants = sum(1 for t in game.rack
+                              if to_display(t) not in VOWELS and t != '?')
+        rack_blanks = sum(1 for t in game.rack if t == '?')
+
         round_data = {
             "type": "round_start",
             "round": game.round_num,
@@ -347,6 +355,9 @@ async def start_round():
             "bag_blanks": bag_blanks,
             "board": board,
             "rack": rack,
+            "rack_vowels": rack_vowels,
+            "rack_consonants": rack_consonants,
+            "rack_blanks": rack_blanks,
             "move_count": move_count,
             "time_seconds": config.time_seconds,
         }
@@ -427,6 +438,10 @@ async def evaluate_round():
             game._player_scores.setdefault(pr["name"], 0)
             game._player_scores[pr["name"]] += pr["score"]
             player_round_scores.setdefault(pr["name"], []).append(pr["score"])
+            # Track plays for export
+            if not hasattr(game, '_player_plays'):
+                game._player_plays = {}
+            game._player_plays.setdefault(pr["name"], []).append(pr["play"])
 
         master_total = sum(game.master_scores)
         leaderboard = sorted(
@@ -440,26 +455,66 @@ async def evaluate_round():
         max_rounds = config.rounds if config.rounds > 0 else 0
         is_last_round = (max_rounds > 0 and game.round_num >= max_rounds)
 
-        results = {
+        # Top N moves (scores + positions, words only if reveal_words)
+        top_moves_list = []
+        top_n = getattr(config, 'top_n_moves', 0)
+        if top_n > 0 and game._all_moves:
+            for m in game._all_moves[:top_n]:
+                entry = {
+                    "score": m.score,
+                    "position": m.pos_str,
+                    "direction": m.dir_arrow,
+                }
+                if getattr(config, 'reveal_words', False):
+                    entry["word"] = m.word_display
+                top_moves_list.append(entry)
+
+        # Player results: hide words unless reveal_words is set
+        reveal = getattr(config, 'reveal_words', False)
+        player_results_host = player_results  # host always sees plays
+        player_results_public = []
+        for pr in player_results:
+            public = dict(pr)
+            if not reveal:
+                public["play"] = ""  # hide the word
+            player_results_public.append(public)
+
+        results_host = {
             "type": "round_results",
             "round": game.round_num,
             "master_play": master_play,
             "master_score": master_score,
             "master_total": master_total,
-            "player_results": player_results,
+            "player_results": player_results_host,
             "leaderboard": leaderboard,
             "board": board_to_json(game.board),
             "is_last_round": is_last_round,
+            "top_moves": top_moves_list,
+            "reveal_words": reveal,
         }
 
-        await send_to_host(results)
+        results_player = {
+            "type": "round_results",
+            "round": game.round_num,
+            "master_play": master_play,
+            "master_score": master_score,
+            "master_total": master_total,
+            "player_results": player_results_public,
+            "leaderboard": leaderboard,
+            "board": board_to_json(game.board),
+            "is_last_round": is_last_round,
+            "top_moves": top_moves_list,
+            "reveal_words": reveal,
+        }
+
+        await send_to_host(results_host)
         # Send each player their own result
         for pr in player_results:
             pname = pr["name"]
             ws = player_connections.get(pname)
             if ws:
-                personal = dict(results)
-                personal["your_result"] = pr
+                personal = dict(results_player)
+                personal["your_result"] = pr  # player always sees their own play
                 try:
                     await ws.send_text(json.dumps(personal))
                 except Exception:

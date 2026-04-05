@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Scrabble Duplicado</title>
+<title>DUPLEX — Scrabble Duplicado</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee; padding: 16px; }
@@ -78,10 +78,20 @@
 </head>
 <body>
   <div class="top-bar">
-    <h1 id="gameTitle">Scrabble Duplicado</h1>
-    <div>
-      <span class="info">Sala:</span>
-      <span class="room-code" id="roomCode">----</span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="/static/logo.png" alt="USA Lexico" style="height:48px;border-radius:6px">
+      <div>
+        <h1 id="gameTitle" style="margin-bottom:0">DUPLEX</h1>
+        <div style="color:#aaa;font-size:0.8em">Scrabble Duplicado — USA Lexico</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div id="qrCode" style="background:#fff;padding:4px;border-radius:4px;display:none"></div>
+      <div style="text-align:center">
+        <span class="info">Sala:</span>
+        <span class="room-code" id="roomCode">----</span>
+        <div id="joinUrl" style="color:#aaa;font-size:0.7em;margin-top:2px"></div>
+      </div>
     </div>
   </div>
 
@@ -134,8 +144,20 @@ ws.onmessage = (e) => {
     document.getElementById("roomCode").textContent = msg.room_code;
     if (msg.title) {
       document.getElementById("gameTitle").textContent = msg.title;
-      document.title = msg.title;
+      document.title = "DUPLEX — " + msg.title;
     }
+    // Generate QR code for player join URL
+    const joinUrl = window.location.origin + '/play';
+    document.getElementById("joinUrl").textContent = joinUrl;
+    const qrEl = document.getElementById("qrCode");
+    const qrImg = document.createElement("img");
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(joinUrl)}`;
+    qrImg.alt = "QR Code";
+    qrImg.style.width = "100px";
+    qrImg.style.height = "100px";
+    qrEl.innerHTML = "";
+    qrEl.appendChild(qrImg);
+    qrEl.style.display = "block";
   }
   else if (msg.type === "players") {
     renderPlayers(msg.names);
@@ -288,17 +310,33 @@ function onRoundResults(msg) {
   stopTimer();
   document.getElementById("timer").textContent = "";
 
-  // Render results — only master play + player scores (no player plays visible)
+  // Render results
   let html = `<h3 style="margin-top:8px;">Resultados Ronda ${msg.round}</h3>`;
-  html += '<table class="results-table"><tr><th>Jugador</th><th>Puntos</th></tr>';
-  html += `<tr class="master-row"><td>Master: ${msg.master_play}</td><td>${msg.master_score}</td></tr>`;
+  html += '<table class="results-table"><tr><th>Jugador</th><th>Jugada</th><th>Puntos</th></tr>';
+  html += `<tr class="master-row"><td>Master</td><td>${msg.master_play}</td><td>${msg.master_score}</td></tr>`;
   const sorted = [...msg.player_results].sort((a, b) => b.score - a.score);
   for (const pr of sorted) {
     const warning = pr.tab_leaves > 0 ? ` <span style="color:#e94560">&#9888;${pr.tab_leaves}</span>` : "";
     const scoreLabel = pr.valid ? pr.score : 0;
-    html += `<tr><td>${pr.name}${warning}</td><td>${scoreLabel}</td></tr>`;
+    const playLabel = pr.play || "—";
+    html += `<tr><td>${pr.name}${warning}</td><td>${playLabel}</td><td>${scoreLabel}</td></tr>`;
   }
   html += '</table>';
+
+  // Top N moves (if configured)
+  if (msg.top_moves && msg.top_moves.length > 1) {
+    html += `<h3 style="margin-top:12px;">Mejores Jugadas</h3>`;
+    html += '<table class="results-table"><tr><th>#</th>';
+    if (msg.reveal_words) html += '<th>Palabra</th>';
+    html += '<th>Posición</th><th>Puntos</th></tr>';
+    msg.top_moves.forEach((m, i) => {
+      html += `<tr><td>${i + 1}</td>`;
+      if (msg.reveal_words) html += `<td>${m.word || ''}</td>`;
+      html += `<td>${m.position} ${m.direction}</td><td>${m.score}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
   document.getElementById("resultsContainer").innerHTML = html;
 
   // Clasificación — top 20

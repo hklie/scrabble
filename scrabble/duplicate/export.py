@@ -5,11 +5,13 @@ import os
 import pandas as pd
 
 
-def build_results_dataframe(players, master_scores, total_rounds):
+def build_results_dataframe(players, master_scores, total_rounds,
+                            player_plays=None):
     """Build a results DataFrame.
 
     Rows: players sorted by total score descending.
-    Columns: Round 1, Round 2, ..., Total, % vs Master.
+    Columns: Round 1 (score), Round 1 Play, ..., Total, % vs Master.
+    If player_plays is provided, includes the actual plays.
     """
     master_total = sum(master_scores)
 
@@ -19,9 +21,13 @@ def build_results_dataframe(players, master_scores, total_rounds):
     rows = []
     for i, player in enumerate(sorted_players):
         row = {'Player': player.name}
+        plays = player_plays.get(player.name, []) if player_plays else []
         for r in range(total_rounds):
             score = player.round_scores[r] if r < len(player.round_scores) else 0
-            row[f'Round {r + 1}'] = score
+            row[f'R{r + 1} Score'] = score
+            if player_plays:
+                play = plays[r] if r < len(plays) else ""
+                row[f'R{r + 1} Play'] = play
         row['Total'] = player.total_score
         pct = (player.total_score / master_total * 100) if master_total > 0 else 0
         row['% vs Master'] = round(pct, 1)
@@ -30,7 +36,9 @@ def build_results_dataframe(players, master_scores, total_rounds):
     # Add master row
     master_row = {'Player': 'Master'}
     for r in range(total_rounds):
-        master_row[f'Round {r + 1}'] = master_scores[r] if r < len(master_scores) else 0
+        master_row[f'R{r + 1} Score'] = master_scores[r] if r < len(master_scores) else 0
+        if player_plays:
+            master_row[f'R{r + 1} Play'] = ''
     master_row['Total'] = master_total
     master_row['% vs Master'] = 100.0
     rows.insert(0, master_row)
@@ -38,15 +46,16 @@ def build_results_dataframe(players, master_scores, total_rounds):
     return pd.DataFrame(rows)
 
 
-def export_csv(players, master_scores, total_rounds, filepath):
+def export_csv(players, master_scores, total_rounds, filepath, player_plays=None):
     """Export results as UTF-8-sig CSV."""
-    df = build_results_dataframe(players, master_scores, total_rounds)
+    df = build_results_dataframe(players, master_scores, total_rounds,
+                                  player_plays=player_plays)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     df.to_csv(filepath, index=False, encoding='utf-8-sig')
     return filepath
 
 
-def export_excel(players, master_scores, total_rounds, filepath):
+def export_excel(players, master_scores, total_rounds, filepath, player_plays=None):
     """Export results as .xlsx with formatting."""
     df = build_results_dataframe(players, master_scores, total_rounds)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -87,7 +96,7 @@ def export_excel(players, master_scores, total_rounds, filepath):
     return filepath
 
 
-def export_html(players, master_scores, total_rounds, filepath):
+def export_html(players, master_scores, total_rounds, filepath, player_plays=None):
     """Export results as styled HTML table."""
     df = build_results_dataframe(players, master_scores, total_rounds)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -120,7 +129,7 @@ def export_html(players, master_scores, total_rounds, filepath):
     return filepath
 
 
-def export_graphical(players, master_scores, total_rounds, filepath):
+def export_graphical(players, master_scores, total_rounds, filepath, player_plays=None):
     """Export cumulative score progression as PNG line chart."""
     import matplotlib
     matplotlib.use('Agg')

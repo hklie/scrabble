@@ -16,6 +16,8 @@ class DupliConfig:
     time_seconds: int = 180
     output_format: str = 'csv'
     title: str = ''
+    reveal_words: bool = False  # Show player words in results (not just scores)
+    top_n_moves: int = 0        # Show top N moves after each round (0 = only master)
 
 
 def parse_config(filepath):
@@ -70,6 +72,12 @@ def parse_config(filepath):
 
             elif key == 'title':
                 config.title = value
+
+            elif key == 'reveal_words':
+                config.reveal_words = value.lower() in ('true', 'yes', 'si', '1')
+
+            elif key == 'top_n_moves' or key == 'top_moves':
+                config.top_n_moves = int(value)
 
     return config
 

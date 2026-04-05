@@ -16,3 +16,11 @@ time = 1:30
 
 # Output format: csv, excel, html, or graphical
 output = csv
+
+# Show top N moves after each round (0 = only master move)
+# Shows scores and positions, not words (unless reveal_words = true)
+top_moves = 5
+
+# Reveal player words in round results (true/false)
+# If false, only scores and player names are shown
+reveal_words = false

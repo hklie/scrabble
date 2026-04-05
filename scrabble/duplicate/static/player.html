@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a1a2e">
 <link rel="manifest" href="/manifest.json">
-<title>Scrabble Duplicado — Jugador</title>
+<title>DUPLEX — Scrabble Duplicado</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #eee;
@@ -325,7 +325,7 @@ function onRoundStart(msg) {
   document.getElementById("rackContainer").innerHTML = msg.rack.map(t => {
     const cls = t === '?' ? 'rack-tile blank' : 'rack-tile';
     return `<span class="${cls}">${t}</span>`;
-  }).join("");
+  }).join("") + `<div style="font-size:0.75em;color:#aaa;margin-top:4px">Atril: ${msg.rack_vowels || 0}V ${msg.rack_consonants || 0}C ${msg.rack_blanks || 0}?</div>`;
 
   // Show input
   document.getElementById("waitingMsg").style.display = "none";
@@ -365,6 +365,16 @@ function startTimer(seconds) {
       el.textContent = "0:00";
       el.className = "timer-bar urgent";
       stopTimer();
+      // Sound + vibration alert
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.frequency.value = 800;
+        osc.connect(ctx.destination);
+        osc.start(); setTimeout(() => osc.stop(), 300);
+        setTimeout(() => { const o2 = ctx.createOscillator(); o2.frequency.value = 600; o2.connect(ctx.destination); o2.start(); setTimeout(() => o2.stop(), 300); }, 400);
+      } catch(e) {}
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       // Auto-disable input if not submitted
       if (!submitted) {
         document.getElementById("submitBtn").disabled = true;
@@ -465,6 +475,18 @@ function onRoundResults(msg) {
   html += `<div class="score ${validClass}">${validLabel}</div>`;
   html += `<div class="master-info">Master: ${msg.master_play} — ${msg.master_score} pts</div>`;
   html += `<div class="standing">#${position} — Total: ${total} pts (${pct}% del master)</div>`;
+
+  // Top N moves
+  if (msg.top_moves && msg.top_moves.length > 1) {
+    html += '<div style="margin-top:10px;font-size:0.85em;color:#aaa">';
+    html += '<strong>Mejores jugadas:</strong>';
+    msg.top_moves.forEach((m, i) => {
+      const word = m.word ? ` ${m.word}` : '';
+      html += `<div style="margin:2px 0">${i+1}. ${m.position} ${m.direction}${word} — ${m.score} pts</div>`;
+    });
+    html += '</div>';
+  }
+
   html += '</div>';
   document.getElementById("resultCard").innerHTML = html;
 
