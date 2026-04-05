@@ -79,7 +79,7 @@
 <body>
   <div class="top-bar">
     <div style="display:flex;align-items:center;gap:12px">
-      <img src="/static/logo.png" alt="USA Lexico" style="height:48px;border-radius:6px">
+      <img src="/static/logo.png" alt="USA Lexico" style="height:96px;border-radius:8px">
       <div>
         <h1 id="gameTitle" style="margin-bottom:0">DUPLEX</h1>
         <div style="color:#aaa;font-size:0.8em">Scrabble Duplicado — USA Lexico</div>
@@ -146,9 +146,16 @@ ws.onmessage = (e) => {
       document.getElementById("gameTitle").textContent = msg.title;
       document.title = "DUPLEX — " + msg.title;
     }
-    // Generate QR code for player join URL
-    const joinUrl = window.location.origin + '/play';
+    // Generate QR code for player join URL using actual hostname/IP
+    const host = window.location.hostname;
+    const port = msg.server_port || window.location.port || 8000;
+    const joinUrl = `http://${host}:${port}/play`;
     document.getElementById("joinUrl").textContent = joinUrl;
+    // If host is using localhost, warn that QR won't work for phones
+    if (host === 'localhost' || host === '127.0.0.1') {
+      document.getElementById("joinUrl").innerHTML = joinUrl +
+        '<br><span style="color:#e94560;font-size:0.9em">Abra esta página con su IP de red para que el QR funcione en celulares</span>';
+    }
     const qrEl = document.getElementById("qrCode");
     const qrImg = document.createElement("img");
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(joinUrl)}`;

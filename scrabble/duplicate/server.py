@@ -44,6 +44,7 @@ config = None
 game: GameState = None
 room_code: str = ""
 game_title: str = ""
+server_port: int = 8000
 
 # Connected clients
 host_ws: WebSocket = None
@@ -157,6 +158,7 @@ async def ws_host(ws: WebSocket):
         "type": "init",
         "room_code": room_code,
         "title": game_title,
+        "server_port": server_port,
         "config": {
             "rounds": config.rounds,
             "time_seconds": config.time_seconds,
@@ -531,7 +533,7 @@ async def evaluate_round():
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    global config, game, room_code, game_title
+    global config, game, room_code, game_title, server_port
 
     parser = argparse.ArgumentParser(description='Duplicate Scrabble Web Server')
     parser.add_argument('config', help='Path to dupli_config.txt')
@@ -562,6 +564,7 @@ def main():
     print(f"  Jugador: http://0.0.0.0:{args.port}/play")
     print()
 
+    server_port = args.port
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=args.port)
 
