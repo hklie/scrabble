@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def build_results_dataframe(players, master_scores, total_rounds,
-                            player_plays=None):
+                            player_plays=None, master_plays=None):
     """Build a results DataFrame.
 
     Rows: players sorted by total score descending.
@@ -38,7 +38,8 @@ def build_results_dataframe(players, master_scores, total_rounds,
     for r in range(total_rounds):
         master_row[f'R{r + 1} Score'] = master_scores[r] if r < len(master_scores) else 0
         if player_plays:
-            master_row[f'R{r + 1} Play'] = ''
+            mp = master_plays[r] if master_plays and r < len(master_plays) else ''
+            master_row[f'R{r + 1} Play'] = mp
     master_row['Total'] = master_total
     master_row['% vs Master'] = 100.0
     rows.insert(0, master_row)
@@ -46,18 +47,21 @@ def build_results_dataframe(players, master_scores, total_rounds,
     return pd.DataFrame(rows)
 
 
-def export_csv(players, master_scores, total_rounds, filepath, player_plays=None):
+def export_csv(players, master_scores, total_rounds, filepath,
+               player_plays=None, master_plays=None):
     """Export results as UTF-8-sig CSV."""
     df = build_results_dataframe(players, master_scores, total_rounds,
-                                  player_plays=player_plays)
+                                  player_plays=player_plays, master_plays=master_plays)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     df.to_csv(filepath, index=False, encoding='utf-8-sig')
     return filepath
 
 
-def export_excel(players, master_scores, total_rounds, filepath, player_plays=None):
+def export_excel(players, master_scores, total_rounds, filepath,
+                  player_plays=None, master_plays=None):
     """Export results as .xlsx with formatting."""
-    df = build_results_dataframe(players, master_scores, total_rounds)
+    df = build_results_dataframe(players, master_scores, total_rounds,
+                                  player_plays=player_plays, master_plays=master_plays)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
@@ -96,9 +100,11 @@ def export_excel(players, master_scores, total_rounds, filepath, player_plays=No
     return filepath
 
 
-def export_html(players, master_scores, total_rounds, filepath, player_plays=None):
+def export_html(players, master_scores, total_rounds, filepath,
+                 player_plays=None, master_plays=None):
     """Export results as styled HTML table."""
-    df = build_results_dataframe(players, master_scores, total_rounds)
+    df = build_results_dataframe(players, master_scores, total_rounds,
+                                  player_plays=player_plays, master_plays=master_plays)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
     style = """
@@ -129,7 +135,8 @@ def export_html(players, master_scores, total_rounds, filepath, player_plays=Non
     return filepath
 
 
-def export_graphical(players, master_scores, total_rounds, filepath, player_plays=None):
+def export_graphical(players, master_scores, total_rounds, filepath,
+                      player_plays=None, master_plays=None):
     """Export cumulative score progression as PNG line chart."""
     import matplotlib
     matplotlib.use('Agg')

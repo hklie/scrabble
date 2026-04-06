@@ -75,6 +75,12 @@
   .status { font-size: 1.1em; color: #aaa; margin: 4px 0; }
   .round-header { font-size: 1.5em; font-weight: bold; margin: 10px 0; color: #4ecca3; }
   .submission-count { font-size: 1.1em; color: #4ecca3; }
+
+  /* Transitions */
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .anim-fade-slide { animation: fadeSlideIn 0.4s ease-out; }
+  .anim-fade { animation: fadeIn 0.3s ease-out; }
 </style>
 </head>
 <body>
@@ -262,13 +268,15 @@ function startRound() {
 
 function onRoundStart(msg) {
   const totalLabel = msg.total_rounds > 0 ? ` / ${msg.total_rounds}` : "";
-  document.getElementById("roundHeader").textContent =
-    `Ronda ${msg.round}${totalLabel}  |  Bolsa: ${msg.bag_size} (V:${msg.bag_vowels} C:${msg.bag_consonants} ?:${msg.bag_blanks})`;
+  const rh = document.getElementById("roundHeader");
+  rh.textContent = `Ronda ${msg.round}${totalLabel}  |  Bolsa: ${msg.bag_size} (V:${msg.bag_vowels} C:${msg.bag_consonants} ?:${msg.bag_blanks})`;
+  rh.className = "round-header anim-fade-slide";
   renderBoard(msg.board);
   renderRack(msg.rack);
   document.getElementById("moveCount").textContent = `Jugadas v\u00e1lidas: ${msg.move_count}`;
   document.getElementById("submissionCount").textContent = "";
   document.getElementById("resultsContainer").innerHTML = "";
+  document.getElementById("leaderboardContainer").innerHTML = "";
   document.getElementById("startBtn").style.display = "none";
 
   // Reset warnings for new round
@@ -344,13 +352,14 @@ function onRoundResults(msg) {
   stopTimer();
   document.getElementById("timer").textContent = "";
 
-  // Render results — master play + player scores only
-  let html = `<h3 style="margin-top:8px;">Resultados Ronda ${msg.round}</h3>`;
-  html += `<div style="margin:8px 0;font-size:1.1em;"><strong>Master:</strong> ${msg.master_play} \u2014 ${msg.master_score} pts</div>`;
+  // Render results — master play only
+  let html = `<div class="anim-fade-slide"><h3 style="margin-top:8px;">Resultados Ronda ${msg.round}</h3>`;
+  html += `<div style="margin:8px 0;font-size:1.1em;"><strong>Master:</strong> ${msg.master_play} \u2014 ${msg.master_score} pts</div></div>`;
   document.getElementById("resultsContainer").innerHTML = html;
 
-  // Clasificación — top 20
-  html = `<h3 style="margin-top:16px;">Clasificaci\u00f3n</h3>`;
+  // Clasificación — top 20 (delayed fade-in)
+  html = `<div class="anim-fade" style="animation-delay:0.3s;animation-fill-mode:both">`;
+  html += `<h3 style="margin-top:16px;">Clasificaci\u00f3n</h3>`;
   html += '<table class="results-table"><tr><th>#</th><th>Jugador</th><th>Total</th><th>% Master</th></tr>';
   html += `<tr class="master-row"><td></td><td>Master</td><td>${msg.master_total}</td><td>100%</td></tr>`;
   const top20 = msg.leaderboard.slice(0, 20);
@@ -360,7 +369,7 @@ function onRoundResults(msg) {
   if (msg.leaderboard.length > 20) {
     html += `<tr><td colspan="4" style="color:#aaa;text-align:center;">... y ${msg.leaderboard.length - 20} m\u00e1s</td></tr>`;
   }
-  html += '</table>';
+  html += '</table></div>';
   document.getElementById("leaderboardContainer").innerHTML = html;
 
   // Update board with master move applied

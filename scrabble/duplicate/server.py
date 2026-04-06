@@ -313,8 +313,9 @@ def do_export():
                  'html': export_html, 'graphical': export_graphical}
     exporter = exporters.get(fmt, export_csv)
     player_plays = getattr(game, '_player_plays', None)
+    master_plays_list = [mp["play"] for mp in master_round_plays]
     exporter(players, game.master_scores, game.round_num, filepath,
-             player_plays=player_plays)
+             player_plays=player_plays, master_plays=master_plays_list)
     print(f"  Resultados exportados: {filepath}")
     return filepath
 

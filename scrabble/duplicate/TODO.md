@@ -35,7 +35,7 @@
 | 4 | Mostrar composición de la bolsa en tiempo real (vocales/consonantes/comodines) | Pequeño | ✅ Hecho (en encabezado de ronda) |
 | 5 | Historial de jugadas de rondas anteriores visible para el anfitrión | Medio | Parcial: resumen al final del juego ✅ |
 | 6 | Sonido/vibración al finalizar temporizador | Pequeño | ✅ Hecho (3 pitidos a los 30 segundos) |
-| 7 | Animaciones de transición entre rondas | Pequeño | |
+| 7 | Animaciones de transición entre rondas | Pequeño | ✅ Hecho (fade-slide en inicio de ronda, resultados, clasificación) |
 
 ### Detalle de #1: Tablero + atril + preview en el celular del jugador
 
@@ -70,7 +70,7 @@
 
 | # | Tarea | Esfuerzo | Estado |
 |---|-------|----------|--------|
-| 14 | Exportar jugadas de cada jugador por ronda (no solo puntajes) | Pequeño | Parcial: puntajes por ronda ✅, falta palabras jugadas |
+| 14 | Exportar jugadas de cada jugador por ronda (no solo puntajes) | Pequeño | ✅ Hecho (incluye jugadas de jugadores y del master) |
 | 15 | Exportar tablero final como imagen | Medio | |
 | 16 | Integrar estadísticas de partidas con el sistema de estudio (palabras falladas → quiz) | Grande | |
 
@@ -87,7 +87,8 @@
 ## Prioridades Sugeridas
 
 **Corto plazo** (mejoras rápidas):
-- #7 (animaciones), #14 completar (exportar palabras jugadas)
+- ~~#7 (animaciones)~~ ✅, ~~#14 (exportar palabras jugadas)~~ ✅
+- #2 (responsive para tabletas/pantallas grandes)
 
 **Mediano plazo** (valor alto):
 - **#1 completar (mini-tablero + preview en celular)**, #8 (práctica individual), #10 (estadísticas post-partida), #11 (replay), #17 (servidor unificado)
