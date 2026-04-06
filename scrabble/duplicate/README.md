@@ -95,9 +95,9 @@ Players submit moves as `WORD POSITION`:
 ### Player View (`/play`)
 - Join screen: room code + name
 - Fullscreen enforcement (anti-cheat)
-- Rack with point values and shuffle button
+- Rack with point values and shuffle button to rearrange tiles
 - Countdown timer, play input with blank confirmation overlay
-- Round results: your score vs Master, leaderboard position
+- Animated round results: your score vs Master, leaderboard position
 - Auto-reconnect on disconnection
 
 ### Anti-Cheat Features
@@ -138,10 +138,10 @@ Standard Scrabble scoring with premium squares (Double/Triple Word, Double/Tripl
 
 ## Export
 
-Results are saved to `duplicate/resultados/` with timestamp:
-- **CSV**: UTF-8 with BOM, player rows sorted by total score
+Results are saved to `duplicate/resultados/` with filename: `{title}_{YYYYMMDD_HHMM}.{ext}`
+- **CSV**: UTF-8 with BOM, includes score + actual word played per round per player, plus master plays
 - **Excel**: Formatted .xlsx with bold headers, colored Master row, auto-width columns
-- **HTML**: Styled dark-theme table
+- **HTML**: Styled dark-theme table with per-round plays
 - **Graphical**: PNG line chart showing cumulative score progression per player
 
 ## Dependencies

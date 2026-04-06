@@ -15,13 +15,16 @@
 - Generación de jugadas con Appel-Jacobson + trie FISE2
 - Código QR para unirse desde celular
 - Composición de bolsa (V/C/?) en encabezado de ronda
-- Fichas del atril con puntos visibles + botón mezclar en celular
+- Fichas del atril con puntos visibles + botón mezclar fichas en celular
 - Alerta sonora (3 pitidos) a los 30 segundos
 - Reconexión automática del jugador en caso de desconexión
 - Resultados simplificados: solo jugada maestra + clasificación (sin mostrar jugadas de otros)
 - Resumen final: jugadas maestras por ronda + top 10
 - Título personalizable desde config o línea de comandos
 - Nombre de archivo de exportación con título del torneo + fecha/hora
+- Exportación incluye jugadas de cada jugador y del master por ronda
+- Animaciones de transición entre rondas (fade-slide)
+- Headers no-cache para evitar problemas de caché en navegadores
 
 ---
 
@@ -87,11 +90,15 @@
 ## Prioridades Sugeridas
 
 **Corto plazo** (mejoras rápidas):
-- ~~#7 (animaciones)~~ ✅, ~~#14 (exportar palabras jugadas)~~ ✅
 - #2 (responsive para tabletas/pantallas grandes)
+- #5 completar (historial de rondas durante la partida, no solo al final)
 
 **Mediano plazo** (valor alto):
-- **#1 completar (mini-tablero + preview en celular)**, #8 (práctica individual), #10 (estadísticas post-partida), #11 (replay), #17 (servidor unificado)
+- **#1 completar (mini-tablero + preview en celular)** — elimina necesidad de tablero físico
+- #8 (práctica individual vs Master)
+- #10 (estadísticas post-partida)
+- #11 (replay ronda por ronda)
 
 **Largo plazo** (ambicioso):
-- #12 (torneo), #18 (BD), #19 (autenticación)
+- #12 (modo torneo), #15 (exportar tablero como imagen), #17 (servidor unificado)
+- #18 (BD), #19 (autenticación), #16 (integración con estudio)

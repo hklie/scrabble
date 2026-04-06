@@ -95,9 +95,9 @@ Los jugadores envian jugadas como `PALABRA POSICION`:
 ### Vista del Jugador (`/play`)
 - Pantalla de ingreso: codigo de sala + nombre
 - Modo pantalla completa obligatorio (anti-trampa)
-- Atril con valor en puntos y boton para mezclar fichas
+- Atril con valor en puntos y boton para mezclar/reordenar fichas
 - Temporizador, entrada de jugada con confirmacion de comodines
-- Resultados de ronda: tu puntaje vs Maestro, posicion en clasificacion
+- Resultados de ronda animados: tu puntaje vs Maestro, posicion en clasificacion
 - Reconexion automatica en caso de desconexion
 
 ### Funciones Anti-Trampa
@@ -138,10 +138,10 @@ Puntuacion estandar de Scrabble con casillas premium (Doble/Triple Palabra, Dobl
 
 ## Exportacion
 
-Los resultados se guardan en `duplicate/resultados/` con marca de tiempo:
-- **CSV**: UTF-8 con BOM, filas de jugadores ordenadas por puntaje total
+Los resultados se guardan en `duplicate/resultados/` con nombre: `{titulo}_{AAAAMMDD_HHMM}.{ext}`
+- **CSV**: UTF-8 con BOM, incluye puntaje + palabra jugada por ronda por jugador, mas jugadas del maestro
 - **Excel**: .xlsx formateado con encabezados en negrita, fila del Maestro coloreada, ancho automatico
-- **HTML**: Tabla con tema oscuro estilizado
+- **HTML**: Tabla con tema oscuro estilizado con jugadas por ronda
 - **Grafico**: Grafico de lineas PNG mostrando la progresion de puntaje acumulado por jugador
 
 ## Dependencias
