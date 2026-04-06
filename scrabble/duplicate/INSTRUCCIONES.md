@@ -83,26 +83,29 @@ Los jugadores envian jugadas como `PALABRA POSICION`:
 ## Interfaz Web
 
 ### Vista del Anfitrion (`/host`)
-- Tablero 15x15 con casillas premium (TP, DP, TL, DL)
-- Atril en vivo, temporizador con cuenta regresiva
+- Tablero 15x15 con casillas premium (TP, DP, TL, DL), estilo tapete verde
+- Atril con valor en puntos de cada ficha
+- Temporizador (3x tamano), alerta sonora de 3 pitidos a los 30 segundos
 - Conteo de jugadores y seguimiento de envios en tiempo real
-- Anti-trampa: advertencias de cambio de pestana por jugador
-- Tabla de resultados de ronda con jugada Maestra + puntajes de todos los jugadores
-- Clasificacion acumulativa (top 20)
+- Resultados de ronda: jugada Maestra + clasificacion acumulativa (top 20)
+- Las jugadas de los jugadores no se muestran para evitar filtrar estrategias
+- Resumen al final del juego: jugadas maestras por ronda + top 10 clasificacion final
+- Codigo QR para que los jugadores se unan facilmente
 
 ### Vista del Jugador (`/play`)
 - Pantalla de ingreso: codigo de sala + nombre
 - Modo pantalla completa obligatorio (anti-trampa)
-- Visualizacion del atril, temporizador
-- Entrada de jugada con confirmacion de comodines
+- Atril con valor en puntos y boton para mezclar fichas
+- Temporizador, entrada de jugada con confirmacion de comodines
 - Resultados de ronda: tu puntaje vs Maestro, posicion en clasificacion
 - Reconexion automatica en caso de desconexion
 
 ### Funciones Anti-Trampa
-- Deteccion de cambio de pestana: cambiar de aplicacion durante una ronda queda registrado
+- Deteccion de cambio de pestana: solo registra salidas de 5+ segundos (ignora notificaciones, barra de estado)
+- Periodo de gracia en transiciones de pantalla completa para evitar falsos positivos
 - Modo pantalla completa obligatorio en moviles
 - API Wake Lock mantiene la pantalla activa
-- Las infracciones se muestran en la clasificacion del anfitrion
+- Conteo agregado de infracciones mostrado en pantalla del anfitrion
 
 ## Estructura del Modulo
 

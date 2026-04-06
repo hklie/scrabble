@@ -83,26 +83,29 @@ Players submit moves as `WORD POSITION`:
 ## Web Interface
 
 ### Host View (`/host`)
-- 15x15 board with premium squares (TP, DP, TL, DL)
-- Live rack display, countdown timer
+- 15x15 board with premium squares (TP, DP, TL, DL), green felt style
+- Rack with point values on each tile
+- Countdown timer (3x size), audible 3-beep warning at 30 seconds
 - Real-time player count and submission tracking
-- Anti-cheat: tab-leave warnings flagged per player
-- Round results table with Master move + all player scores
-- Cumulative leaderboard (top 20)
+- Round results: Master move + cumulative classification (top 20)
+- Player plays are hidden to prevent strategy leaking
+- End-of-game summary: master plays per round + top 10 final ranking
+- QR code for easy player join
 
 ### Player View (`/play`)
 - Join screen: room code + name
 - Fullscreen enforcement (anti-cheat)
-- Rack display, countdown timer
-- Play input with blank confirmation overlay
+- Rack with point values and shuffle button
+- Countdown timer, play input with blank confirmation overlay
 - Round results: your score vs Master, leaderboard position
 - Auto-reconnect on disconnection
 
 ### Anti-Cheat Features
-- Tab-leave detection: switching apps during a round is flagged
+- Tab-leave detection: only flags switches lasting 5+ seconds (ignores notifications, status bar)
+- Grace period for fullscreen transitions to avoid false positives
 - Fullscreen enforcement on mobile
 - Wake Lock API keeps screen active
-- Tab violations shown on the host leaderboard
+- Aggregate tab-violation count shown on host screen
 
 ## Module Structure
 

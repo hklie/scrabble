@@ -9,10 +9,19 @@
 
 - Modo CLI funcional con registro de jugadores, temporizador, validación de jugadas
 - Modo web funcional con FastAPI + WebSocket (host + jugadores)
-- Anti-trampa: detección de cambio de pestaña, pantalla completa obligatoria, Wake Lock
+- Anti-trampa: detección de cambio de pestaña (umbral 5s), pantalla completa, Wake Lock
 - Exportación multi-formato: CSV, Excel, HTML, gráfico PNG
 - Restricciones configurables de atril (mínimo de vocales/consonantes)
 - Generación de jugadas con Appel-Jacobson + trie FISE2
+- Código QR para unirse desde celular
+- Composición de bolsa (V/C/?) en encabezado de ronda
+- Fichas del atril con puntos visibles + botón mezclar en celular
+- Alerta sonora (3 pitidos) a los 30 segundos
+- Reconexión automática del jugador en caso de desconexión
+- Resultados simplificados: solo jugada maestra + clasificación (sin mostrar jugadas de otros)
+- Resumen final: jugadas maestras por ronda + top 10
+- Título personalizable desde config o línea de comandos
+- Nombre de archivo de exportación con título del torneo + fecha/hora
 
 ---
 
@@ -20,12 +29,12 @@
 
 | # | Tarea | Esfuerzo | Estado |
 |---|-------|----------|--------|
-| 1 | **Tablero + atril + preview de jugada en el celular del jugador** | Grande | |
+| 1 | **Tablero + atril + preview de jugada en el celular del jugador** | Grande | Parcial: atril con puntos y mezcla ✅, falta mini-tablero y preview |
 | 2 | Mejorar diseño responsive para tabletas/pantallas grandes | Medio | |
-| 3 | Añadir código QR en pantalla del anfitrión para que jugadores se unan fácilmente | Pequeño | |
-| 4 | Mostrar composición del atril en tiempo real (vocales/consonantes/comodines) | Pequeño | |
-| 5 | Historial de jugadas de rondas anteriores visible para el anfitrión | Medio | |
-| 6 | Sonido/vibración al finalizar temporizador | Pequeño | |
+| 3 | Añadir código QR en pantalla del anfitrión para que jugadores se unan fácilmente | Pequeño | ✅ Hecho |
+| 4 | Mostrar composición de la bolsa en tiempo real (vocales/consonantes/comodines) | Pequeño | ✅ Hecho (en encabezado de ronda) |
+| 5 | Historial de jugadas de rondas anteriores visible para el anfitrión | Medio | Parcial: resumen al final del juego ✅ |
+| 6 | Sonido/vibración al finalizar temporizador | Pequeño | ✅ Hecho (3 pitidos a los 30 segundos) |
 | 7 | Animaciones de transición entre rondas | Pequeño | |
 
 ### Detalle de #1: Tablero + atril + preview en el celular del jugador
@@ -51,7 +60,7 @@
 | # | Tarea | Esfuerzo | Estado |
 |---|-------|----------|--------|
 | 8 | Modo práctica individual (jugar contra el Maestro sin otros jugadores) | Medio | |
-| 9 | Opción de mostrar las N mejores jugadas después de cada ronda (no solo la maestra) | Pequeño | |
+| 9 | Opción de mostrar las N mejores jugadas después de cada ronda (no solo la maestra) | Pequeño | ✅ Implementado (config: `top_moves`), desactivado por defecto |
 | 10 | Estadísticas post-partida detalladas: promedio por ronda, mejor/peor ronda, racha | Medio | |
 | 11 | Replay de partida: revisar tablero ronda por ronda después de terminar | Medio | |
 | 12 | Modo torneo: múltiples partidas con clasificación acumulativa | Grande | |
@@ -61,7 +70,7 @@
 
 | # | Tarea | Esfuerzo | Estado |
 |---|-------|----------|--------|
-| 14 | Exportar jugadas de cada jugador por ronda (no solo puntajes) | Pequeño | |
+| 14 | Exportar jugadas de cada jugador por ronda (no solo puntajes) | Pequeño | Parcial: puntajes por ronda ✅, falta palabras jugadas |
 | 15 | Exportar tablero final como imagen | Medio | |
 | 16 | Integrar estadísticas de partidas con el sistema de estudio (palabras falladas → quiz) | Grande | |
 
@@ -78,10 +87,10 @@
 ## Prioridades Sugeridas
 
 **Corto plazo** (mejoras rápidas):
-- #3 (QR code), #4 (composición atril), #6 (sonido), #9 (top N jugadas), #14 (exportar jugadas)
+- #7 (animaciones), #14 completar (exportar palabras jugadas)
 
 **Mediano plazo** (valor alto):
-- **#1 (tablero en celular — elimina necesidad de tablero físico)**, #8 (práctica individual), #10 (estadísticas), #16 (integración con estudio), #17 (servidor unificado)
+- **#1 completar (mini-tablero + preview en celular)**, #8 (práctica individual), #10 (estadísticas post-partida), #11 (replay), #17 (servidor unificado)
 
 **Largo plazo** (ambicioso):
 - #12 (torneo), #18 (BD), #19 (autenticación)

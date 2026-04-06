@@ -29,6 +29,7 @@ from scrabble.duplicate.engine import GameState, validate_play
 from scrabble.duplicate.players import Player
 from scrabble.analyze_board import to_display
 from autoplay_scrabble import VOWELS
+from config import SCRABBLE_POINTS
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
 
@@ -58,6 +59,7 @@ round_tab_flags: dict[str, list] = {}           # name -> list of leave timestam
 
 # Cumulative player tracking for export
 player_round_scores: dict[str, list] = {}       # name -> [score_r1, score_r2, ...]
+master_round_plays: list = []                    # [{play, score, round}, ...]
 
 
 def generate_room_code():
@@ -81,7 +83,16 @@ def board_to_json(board):
 
 
 def rack_to_json(rack):
-    return [to_display(t).upper() if t != '?' else '?' for t in rack]
+    """Return rack as list of {letter, points} dicts."""
+    result = []
+    for t in rack:
+        if t == '?':
+            result.append({"letter": "?", "points": 0})
+        else:
+            display = to_display(t).upper()
+            pts = SCRABBLE_POINTS.get(to_display(t).lower(), 0)
+            result.append({"letter": display, "points": pts})
+    return result
 
 
 async def broadcast_to_players(msg: dict):
@@ -137,12 +148,18 @@ async def manifest():
 
 @app.get("/host")
 async def host_page():
-    return FileResponse(os.path.join(STATIC_DIR, "host.html"))
+    from fastapi.responses import HTMLResponse
+    with open(os.path.join(STATIC_DIR, "host.html"), 'r', encoding='utf-8') as f:
+        content = f.read()
+    return HTMLResponse(content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
 @app.get("/play")
 async def player_page():
-    return FileResponse(os.path.join(STATIC_DIR, "player.html"))
+    from fastapi.responses import HTMLResponse
+    with open(os.path.join(STATIC_DIR, "player.html"), 'r', encoding='utf-8') as f:
+        content = f.read()
+    return HTMLResponse(content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
 # ── Host WebSocket ────────────────────────────────────────────────────────────
@@ -432,6 +449,11 @@ async def evaluate_round():
                            f"{game.best_move.pos_str} {game.best_move.dir_arrow}")
             master_score = game.best_move.score
         game.apply_master_move()
+        master_round_plays.append({
+            "round": game.round_num,
+            "play": master_play,
+            "score": master_score,
+        })
 
         # Track per-round scores for leaderboard and export
         if not hasattr(game, '_player_scores'):
@@ -522,11 +544,17 @@ async def evaluate_round():
                 except Exception:
                     pass
 
-        # If last round, export and send game_over
+        # If last round, export and send game_over with summary
         if is_last_round:
             do_export()
-            await send_to_host({"type": "game_over",
-                                "reason": f"Se completaron las {max_rounds} rondas."})
+            top10 = leaderboard[:10]
+            await send_to_host({
+                "type": "game_over",
+                "reason": f"Se completaron las {max_rounds} rondas.",
+                "master_plays": master_round_plays,
+                "master_total": master_total,
+                "top10": top10,
+            })
             await broadcast_to_players({"type": "game_over"})
 
 

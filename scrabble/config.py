@@ -39,7 +39,7 @@ ENDINGS = {"b", "c", "ch", "d", "f", "g", "h", "i", "j", "l", "ll", "m", "n", "p
 PREFIXES = {"ae", "ai", "ao", "au", "eo", "eu", "io", "oe", "oo", "gua", "hua", "gl", "bi", "tri"}
 SUFFIXES = {"aceV", "ajV", "alV", "anV", "añV", "ante", "atV", "azo", "ciV", "cion", "dor", "dora", "enV",
             "ense", "eñV", "erV", "esV", "etV", "ble", "icV", "inV", "io", "uV", "ismo", "itV", "ivV", "izV",
-            "l", "lV", "azo", "miV", "illV", "osV", "sion", "udV", "CC", "VV", "urV", "yV"}
+            "l", "lV", "azo", "miV", "illV", "osV", "sion", "udV", "CC", "VV", "urV", "yV", "uelV", "uchV"}
 
 EXTENSIVE_PREFIXES = PREFIXES.union({'re', 'des', 'dis', 'sub', 'ana', 'anti', 'geo', 'iso', 'mal', 'para', 'per',
                                      'pre', 'pro', 'sub', 'tele', 'teo', 'meso', 'ex', 'trans', 'in', 'im', 'lito',

@@ -5,14 +5,14 @@
 # title = CAMPEONATO MUNDIAL DE DUPLICADA - Partida 1
 
 # Number of rounds (0 = unlimited, play until bag depleted)
-rounds = 1
+rounds = 3
 
 # Rack constraints: (min_vowels_and_consonants, until_round)
 # After the last specified round, constraint drops to 0.
 constraints = (2,15),(1,30)
 
 # Time per play in M:SS format
-time = 1:30
+time = 1:00
 
 # Output format: csv, excel, html, or graphical
 output = csv

@@ -37,8 +37,9 @@
 
   .rack { display: flex; justify-content: center; gap: 6px; padding: 12px; flex-wrap: wrap; }
   .rack-tile { width: 44px; height: 44px; background: #c7a94e; color: #1a1a2e; font-weight: bold;
-               font-size: 1.3em; display: flex; align-items: center; justify-content: center;
-               border-radius: 6px; }
+               font-size: 1.2em; display: flex; align-items: center; justify-content: center;
+               border-radius: 6px; position: relative; }
+  .rack-pts { position: absolute; bottom: 1px; right: 3px; font-size: 0.5em; color: #555; font-weight: normal; }
 
   .play-section { flex: 1; display: flex; flex-direction: column; align-items: center;
                   justify-content: center; padding: 16px; gap: 12px; }
@@ -117,6 +118,10 @@
     </div>
     <div class="timer-bar" id="timer"></div>
     <div class="rack" id="rackContainer"></div>
+    <div id="shuffleRow" style="text-align:center;display:none">
+      <button onclick="shuffleRack()" style="background:none;border:1px solid #555;color:#aaa;
+              padding:4px 14px;border-radius:4px;font-size:0.8em;cursor:pointer">&#x1F500; Mezclar</button>
+    </div>
 
     <div class="play-section" id="playSection">
       <div class="waiting-msg" id="waitingMsg">Esperando inicio de ronda...</div>
@@ -153,6 +158,7 @@ let timerInterval = null;
 let roundActive = false;
 let submitted = false;
 let wakeLock = null;
+let currentRack = [];
 
 // Wake Lock: prevent screen from going dark
 async function requestWakeLock() {
@@ -322,10 +328,9 @@ function onRoundStart(msg) {
     `Ronda ${msg.round}${totalLabel}  |  Bolsa: ${msg.bag_size} (V:${msg.bag_vowels} C:${msg.bag_consonants} ?:${msg.bag_blanks})`;
 
   // Rack (blanks shown as ? with distinct style)
-  document.getElementById("rackContainer").innerHTML = msg.rack.map(t => {
-    const cls = t === '?' ? 'rack-tile blank' : 'rack-tile';
-    return `<span class="${cls}">${t}</span>`;
-  }).join("") + `<div style="font-size:0.75em;color:#aaa;margin-top:4px">Atril: ${msg.rack_vowels || 0}V ${msg.rack_consonants || 0}C ${msg.rack_blanks || 0}?</div>`;
+  currentRack = [...msg.rack];
+  renderPlayerRack();
+  document.getElementById("shuffleRow").style.display = "block";
 
   // Show input
   document.getElementById("waitingMsg").style.display = "none";
@@ -392,6 +397,22 @@ function stopTimer() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
+function renderPlayerRack() {
+  document.getElementById("rackContainer").innerHTML = currentRack.map(t => {
+    const cls = t.letter === '?' ? 'rack-tile blank' : 'rack-tile';
+    const pts = t.points > 0 ? `<span class="rack-pts">${t.points}</span>` : '';
+    return `<span class="${cls}">${t.letter}${pts}</span>`;
+  }).join("");
+}
+
+function shuffleRack() {
+  for (let i = currentRack.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [currentRack[i], currentRack[j]] = [currentRack[j], currentRack[i]];
+  }
+  renderPlayerRack();
+}
+
 let pendingPlay = "";
 
 function confirmPlay() {
@@ -448,6 +469,7 @@ function onRoundResults(msg) {
   document.getElementById("playInput").style.display = "none";
   document.getElementById("playHint").style.display = "none";
   document.getElementById("submitBtn").style.display = "none";
+  document.getElementById("shuffleRow").style.display = "none";
   document.getElementById("statusMsg").textContent = "";
 
   // Show result card

@@ -46,9 +46,10 @@
   /* Rack */
   .rack { display: flex; gap: 6px; margin: 14px 0; }
   .rack-tile { width: 50px; height: 50px; background: #f0e1be; color: #1e1e1e; font-weight: bold;
-               font-size: 1.6em; display: flex; align-items: center; justify-content: center;
-               border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+               font-size: 1.5em; display: flex; align-items: center; justify-content: center;
+               border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); position: relative; }
   .rack-tile.blank { background: #dcc8a5; }
+  .rack-pts { position: absolute; bottom: 1px; right: 3px; font-size: 0.5em; color: #555; font-weight: normal; }
 
   /* Timer */
   .timer { font-size: 7.5em; font-weight: bold; text-align: center; margin: 12px 0;
@@ -154,7 +155,7 @@ ws.onmessage = (e) => {
     // If host is using localhost, warn that QR won't work for phones
     if (host === 'localhost' || host === '127.0.0.1') {
       document.getElementById("joinUrl").innerHTML = joinUrl +
-        '<br><span style="color:#e94560;font-size:0.9em">Abra esta página con su IP de red para que el QR funcione en celulares</span>';
+        '<br><br><span style="color:#e94560;font-size:0.9em">Abra esta página con su IP de red para que el QR funcione en celulares</span>';
     }
     const qrEl = document.getElementById("qrCode");
     const qrImg = document.createElement("img");
@@ -187,6 +188,7 @@ ws.onmessage = (e) => {
       "Fin del Juego \u2014 " + (msg.reason || "");
     document.getElementById("startBtn").style.display = "none";
     stopTimer();
+    showGameSummary(msg);
   }
 };
 
@@ -247,8 +249,9 @@ function renderBoard(board) {
 
 function renderRack(rack) {
   document.getElementById("rackContainer").innerHTML = rack.map(t => {
-    const cls = t === '?' ? 'rack-tile blank' : 'rack-tile';
-    return `<span class="${cls}">${t}</span>`;
+    const cls = t.letter === '?' ? 'rack-tile blank' : 'rack-tile';
+    const pts = t.points > 0 ? `<span class="rack-pts">${t.points}</span>` : '';
+    return `<span class="${cls}">${t.letter}${pts}</span>`;
   }).join("");
 }
 
@@ -263,7 +266,7 @@ function onRoundStart(msg) {
     `Ronda ${msg.round}${totalLabel}  |  Bolsa: ${msg.bag_size} (V:${msg.bag_vowels} C:${msg.bag_consonants} ?:${msg.bag_blanks})`;
   renderBoard(msg.board);
   renderRack(msg.rack);
-  document.getElementById("moveCount").textContent = `Jugadas validas: ${msg.move_count}`;
+  document.getElementById("moveCount").textContent = `Jugadas v\u00e1lidas: ${msg.move_count}`;
   document.getElementById("submissionCount").textContent = "";
   document.getElementById("resultsContainer").innerHTML = "";
   document.getElementById("startBtn").style.display = "none";
@@ -275,15 +278,39 @@ function onRoundStart(msg) {
   startTimer(msg.time_seconds);
 }
 
+// Audio context for 30-second warning beep
+let audioCtx = null;
+function playWarningBeep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Three short beeps
+    [0, 0.2, 0.4].forEach(delay => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = 880;
+      gain.gain.value = 0.3;
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + 0.12);
+    });
+  } catch (e) { /* audio not supported */ }
+}
+
 function startTimer(seconds) {
   stopTimer();
   let remaining = seconds;
+  let beeped = false;
   const el = document.getElementById("timer");
   const update = () => {
     const m = Math.floor(remaining / 60);
     const s = remaining % 60;
     el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
     el.className = remaining <= 30 ? "timer urgent" : "timer";
+    if (remaining === 30 && !beeped) {
+      beeped = true;
+      playWarningBeep();
+    }
   };
   update();
   timerInterval = setInterval(() => {
@@ -317,33 +344,9 @@ function onRoundResults(msg) {
   stopTimer();
   document.getElementById("timer").textContent = "";
 
-  // Render results
+  // Render results — master play + player scores only
   let html = `<h3 style="margin-top:8px;">Resultados Ronda ${msg.round}</h3>`;
-  html += '<table class="results-table"><tr><th>Jugador</th><th>Jugada</th><th>Puntos</th></tr>';
-  html += `<tr class="master-row"><td>Master</td><td>${msg.master_play}</td><td>${msg.master_score}</td></tr>`;
-  const sorted = [...msg.player_results].sort((a, b) => b.score - a.score);
-  for (const pr of sorted) {
-    const warning = pr.tab_leaves > 0 ? ` <span style="color:#e94560">&#9888;${pr.tab_leaves}</span>` : "";
-    const scoreLabel = pr.valid ? pr.score : 0;
-    const playLabel = pr.play || "—";
-    html += `<tr><td>${pr.name}${warning}</td><td>${playLabel}</td><td>${scoreLabel}</td></tr>`;
-  }
-  html += '</table>';
-
-  // Top N moves (if configured)
-  if (msg.top_moves && msg.top_moves.length > 1) {
-    html += `<h3 style="margin-top:12px;">Mejores Jugadas</h3>`;
-    html += '<table class="results-table"><tr><th>#</th>';
-    if (msg.reveal_words) html += '<th>Palabra</th>';
-    html += '<th>Posición</th><th>Puntos</th></tr>';
-    msg.top_moves.forEach((m, i) => {
-      html += `<tr><td>${i + 1}</td>`;
-      if (msg.reveal_words) html += `<td>${m.word || ''}</td>`;
-      html += `<td>${m.position} ${m.direction}</td><td>${m.score}</td></tr>`;
-    });
-    html += '</table>';
-  }
-
+  html += `<div style="margin:8px 0;font-size:1.1em;"><strong>Master:</strong> ${msg.master_play} \u2014 ${msg.master_score} pts</div>`;
   document.getElementById("resultsContainer").innerHTML = html;
 
   // Clasificación — top 20
@@ -370,6 +373,32 @@ function onRoundResults(msg) {
     btn.style.display = "inline-block";
     btn.disabled = false;
     btn.textContent = `Iniciar Ronda ${msg.round + 1}`;
+  }
+}
+
+function showGameSummary(msg) {
+  if (!msg.master_plays) return;
+
+  // Master plays summary
+  let html = '<h3 style="margin-top:12px;">Resumen del Master</h3>';
+  html += '<table class="results-table"><tr><th>Ronda</th><th>Jugada</th><th>Puntos</th></tr>';
+  for (const mp of msg.master_plays) {
+    html += `<tr><td>${mp.round}</td><td>${mp.play}</td><td>${mp.score}</td></tr>`;
+  }
+  html += `<tr class="master-row"><td></td><td>Total</td><td>${msg.master_total}</td></tr>`;
+  html += '</table>';
+  document.getElementById("resultsContainer").innerHTML = html;
+
+  // Top 10 players
+  if (msg.top10 && msg.top10.length > 0) {
+    html = `<h3 style="margin-top:16px;">Clasificaci\u00f3n Final — Top 10</h3>`;
+    html += '<table class="results-table"><tr><th>#</th><th>Jugador</th><th>Total</th><th>% Master</th></tr>';
+    html += `<tr class="master-row"><td></td><td>Master</td><td>${msg.master_total}</td><td>100%</td></tr>`;
+    msg.top10.forEach((p, i) => {
+      html += `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.total}</td><td>${p.pct}%</td></tr>`;
+    });
+    html += '</table>';
+    document.getElementById("leaderboardContainer").innerHTML = html;
   }
 }
 </script>
