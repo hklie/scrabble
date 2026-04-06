@@ -39,6 +39,8 @@
 | 5 | Historial de jugadas de rondas anteriores visible para el anfitrión | Medio | Parcial: resumen al final del juego ✅ |
 | 6 | Sonido/vibración al finalizar temporizador | Pequeño | ✅ Hecho (3 pitidos a los 30 segundos) |
 | 7 | Animaciones de transición entre rondas | Pequeño | ✅ Hecho (fade-slide en inicio de ronda, resultados, clasificación) |
+| 20 | **Evitar que el celular se duerma o apague la pantalla durante la partida** — el Wake Lock API actual no es suficiente en todos los dispositivos (iOS Safari, algunos Android). Investigar: (a) reproducir audio/video silencioso en loop para mantener la pantalla activa, (b) solicitar al jugador que ajuste su configuración de pantalla antes de jugar, (c) NoSleep.js como alternativa robusta. El apagado de pantalla activa la detección de cambio de pestaña, generando falsos positivos. | Medio | |
+| 21 | **Reordenar fichas del atril arrastrando con el dedo (drag & drop)** — actualmente el botón "Mezclar" reordena aleatoriamente. Implementar arrastre táctil para que el jugador pueda mover fichas individuales a la posición deseada, facilitando la visualización de anagramas. Usar Touch Events API (touchstart/touchmove/touchend) con feedback visual durante el arrastre. | Medio | |
 
 ### Detalle de #1: Tablero + atril + preview en el celular del jugador
 
@@ -90,11 +92,13 @@
 ## Prioridades Sugeridas
 
 **Corto plazo** (mejoras rápidas):
+- **#20 (evitar que el celular se duerma)** — impacta directamente la experiencia y los falsos positivos anti-trampa
 - #2 (responsive para tabletas/pantallas grandes)
 - #5 completar (historial de rondas durante la partida, no solo al final)
 
 **Mediano plazo** (valor alto):
 - **#1 completar (mini-tablero + preview en celular)** — elimina necesidad de tablero físico
+- **#21 (arrastrar fichas con el dedo)** — mejora la experiencia táctil
 - #8 (práctica individual vs Master)
 - #10 (estadísticas post-partida)
 - #11 (replay ronda por ronda)

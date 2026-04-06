@@ -499,20 +499,8 @@ function onRoundResults(msg) {
   html += `<h2>Ronda ${msg.round}</h2>`;
   html += `<div>Tu jugada: <strong>${yr.play || "PASO"}</strong></div>`;
   html += `<div class="score ${validClass}">${validLabel}</div>`;
-  html += `<div class="master-info">Master: ${msg.master_play} — ${msg.master_score} pts</div>`;
+  html += `<div class="master-info">Master: ${msg.master_score} pts (acumulado: ${msg.master_total})</div>`;
   html += `<div class="standing">#${position} — Total: ${total} pts (${pct}% del master)</div>`;
-
-  // Top N moves
-  if (msg.top_moves && msg.top_moves.length > 1) {
-    html += '<div style="margin-top:10px;font-size:0.85em;color:#aaa">';
-    html += '<strong>Mejores jugadas:</strong>';
-    msg.top_moves.forEach((m, i) => {
-      const word = m.word ? ` ${m.word}` : '';
-      html += `<div style="margin:2px 0">${i+1}. ${m.position} ${m.direction}${word} — ${m.score} pts</div>`;
-    });
-    html += '</div>';
-  }
-
   html += '</div>';
   document.getElementById("resultCard").innerHTML = html;
 
